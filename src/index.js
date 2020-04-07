@@ -818,6 +818,29 @@ export const result = (ok, err) =>
  */
 export const Task = Type({ fork: Function });
 
+export const fork = curry(
+  (fail, succeed, task) =>
+    task.fork(
+      err => {
+        if (fail::is(Array)) {
+          const [f, ...args] = fail;
+          return f(...args);
+        } else {
+          return fail(err);
+        }
+      },
+      val => {
+        if (fail::is(Array)) {
+          const [f, ...args] = fail;
+          return f(...args);
+        } else {
+          return succeed(err);
+        }
+      }
+    ),
+  3
+);
+
 Task.fail = x => Task((fail, succeed) => fail(x));
 Task.succeed = x => Task((fail, succeed) => succeed(x));
 Task.of = x => Task((fail, succeed) => succeed(x));

@@ -100,6 +100,7 @@ var utils = [
   "maybe",
   "Result",
   "Task",
+  "fork",
 
   // -- Function Utils
 
