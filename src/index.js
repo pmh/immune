@@ -830,11 +830,11 @@ export const fork = curry(
         }
       },
       val => {
-        if (fail::is(Array)) {
-          const [f, ...args] = fail;
+        if (succeed::is(Array)) {
+          const [f, ...args] = succeed;
           return f(...args);
         } else {
-          return succeed(err);
+          return succeed(val);
         }
       }
     ),
