@@ -883,6 +883,12 @@ Task.try = curry(
   2
 );
 
+Task.fromMaybe = maybe =>
+  maybe::caseOf({ Some: Task.succeed, None: Task.fail });
+
+Task.fromResult = result =>
+  result::caseOf({ Ok: Task.succeed, Err: Task.fail });
+
 Task.fromPromise = p => Task((fail, succeed) => p.then(succeed).catch(fail));
 
 Task.toPromise = t => new Promise((succeed, fail) => t.fork(fail, succeed));
