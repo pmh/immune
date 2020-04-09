@@ -1464,10 +1464,7 @@ extendType(
   IMonadic,
   {
     of: (x, t) => Task.of(x),
-    flatten: t =>
-      Task((fail, succeed) => {
-        fail, succeed;
-      })
+    flatten: t => Task((fail, succeed) => t::fork(fail, fork(fail, succeed)))
   },
 
   IApply,
