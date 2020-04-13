@@ -688,10 +688,11 @@ export const ISeq = Protocol({
 export const { first, rest } = ISeq;
 
 export const ICollection = Protocol({
-  conj: ["x", "xs"]
+  conj: ["x", "xs"],
+  filterKV: ["f", "xs"]
 });
 
-export const { conj } = ICollection;
+export const { conj, filterKV } = ICollection;
 
 export const IIterator = Protocol({
   iterator: ["x"]
@@ -1039,7 +1040,8 @@ extendType(
 
   ICollection,
   {
-    conj: (x, xs) => xs.concat(x)
+    conj: (x, xs) => xs.concat(x),
+    filterKV: (f, xs) => xs.filter((v, k) => f(k, v))
   },
 
   IIterator,
@@ -1122,7 +1124,12 @@ extendType(
 
   ICollection,
   {
-    conj: (x, str) => str + x
+    conj: (x, str) => str + x,
+    filterKV: (f, xs) =>
+      xs
+        .split("")
+        .filter((v, k) => f(k, v))
+        .join("")
   },
 
   IIterator,
@@ -1259,7 +1266,13 @@ extendType(
   ICollection,
   {
     conj: (x, obj) =>
-      Array.isArray(x) ? assoc(x[0], x[1], obj) : foldlKV(assoc, obj, x)
+      Array.isArray(x) ? assoc(x[0], x[1], obj) : foldlKV(assoc, obj, x),
+
+    filterKV: (f, obj) =>
+      Object.keys(obj)::foldl(
+        (k, acc) => (f(k, obj[k]) ? acc::assoc(k, obj[k]) : acc),
+        {}
+      )
   },
 
   ILookup,
@@ -1666,19 +1679,16 @@ export const every = curry(
 // -- Collection Utils
 
 /*
- * join(sep, str)
+ * filter(f, coll)
  *
- * Joins a list of strings into a single string separated by a character
+ * Returns a new collection with only the items that satisfies a predicate
  */
-export const filterKV = curry(
-  (f, xs) =>
-    xs::foldlKV((k, v, acc) => (f(k, v) ? acc::conj(v) : acc), empty(xs)),
-  2
-);
-
 export const filter = curry((f, xs) => xs::filterKV((k, v) => f(v)), 2);
 
-export const removeKV = curry((f, coll) => coll::filterKV(f), 2);
+export const removeKV = curry(
+  (f, coll) => coll::filterKV((k, v) => !f(k, v)),
+  2
+);
 
 export const remove = curry((f, coll) => coll::removeKV((k, v) => f(v)), 2);
 
