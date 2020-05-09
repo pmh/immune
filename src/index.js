@@ -808,7 +808,7 @@ export const result = (ok, err) =>
  *   // Transform the eventual result
  *   const transformedTask = delayedTask
  *     ::map(x => x + "!")
- *     ::andThen(x => Task.of(x + " task!!"))
+ *     ::flatMap(x => Task.of(x + " task!!"))
  *
  *   // Actually execute the task
  *   transformedTask::fork(
@@ -1088,7 +1088,7 @@ extendType(
 
   IApply,
   {
-    ap: (ma, mb) => mb::andThen(f => ma::map(f))
+    ap: (ma, mb) => mb::flatMap(f => ma::map(f))
   }
 );
 
@@ -1195,7 +1195,7 @@ extendType(
 
   IApply,
   {
-    ap: (ma, mb) => mb::andThen(f => ma::map(f))
+    ap: (ma, mb) => mb::flatMap(f => ma::map(f))
   }
 );
 
@@ -1488,7 +1488,7 @@ extendType(
 
   IApply,
   {
-    ap: (tb, ta) => ta::andThen(map(__, tb))
+    ap: (tb, ta) => ta::flatMap(map(__, tb))
   }
 );
 
@@ -1656,7 +1656,8 @@ export const foldrKV = curry((f, initial, x) =>
   xs::keys()::foldr((k, acc) => f(k, xs::getOrElse(k, void 0), acc), initial)
 );
 
-export const andThen = curry((fn, m) => m::map(fn)::flatten(), 2);
+export const flatMap = curry((fn, m) => m::map(fn)::flatten(), 2);
+export const flatMapError = curry((fn, m) => m::mapError(fn)::flatten(), 2);
 
 // -- List utils
 

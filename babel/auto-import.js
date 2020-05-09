@@ -89,7 +89,8 @@ var utils = [
   "ap",
   "IMonadic",
   "flatten",
-  "andThen",
+  "flatMap",
+  "flatMapError",
 
   // -- Types
 
