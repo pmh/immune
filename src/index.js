@@ -746,16 +746,20 @@ export const IFunctor = Protocol({
 export const { map } = IFunctor;
 
 export const ICata = Protocol({
-  cata: ["f", "g", "coll"]
+  cata: ["f", "g", "m"]
 });
 
 export const { cata } = ICata;
 
 export const IBifunctor = Protocol({
-  bimap: ["f", "g", "coll"]
+  bimap: ["f", "g", "m"]
 });
 
 export const { bimap } = IBifunctor;
+
+export const IFlatMapError = Protocol({
+  flatMapError: ["f", "m"]
+});
 
 export const IApply = Protocol({
   ap: ["ma", "mb"]
@@ -1406,7 +1410,7 @@ extendType(
 
   IFunctor,
   {
-    map: (f, fa) => fa::caseOf({ Ok: comp(Result.Ok, f), Err: () => fa })
+    map: (f, fa) => fa::caseOf({ Ok: comp(Result.Ok, f), Err: Result.Err })
   },
 
   ICata,
@@ -1418,6 +1422,11 @@ extendType(
   {
     bimap: (f, g, fa) =>
       fa::caseOf({ Ok: x => Result.Ok(g(x)), Err: err => Result.Err(f(err)) })
+  },
+
+  IFlatMapError,
+  {
+    flatMapError: (f, fa) => fa::caseOf({ Ok: Result.Ok, Err: f })
   },
 
   IMonadic,
@@ -1477,6 +1486,14 @@ extendType(
     bimap: (f, g, m) =>
       Task((fail, succeed) => {
         m.fork(err => fail(f(err)), val => succeed(g(val)));
+      })
+  },
+
+  IFlatMapError,
+  {
+    flatMapError: (f, fa) =>
+      Task((fail, succeed) => {
+        fa.fork(err => f(err).fork(fail, succeed), succeed);
       })
   },
 
@@ -1657,7 +1674,6 @@ export const foldrKV = curry((f, initial, x) =>
 );
 
 export const flatMap = curry((fn, m) => m::map(fn)::flatten(), 2);
-export const flatMapError = curry((fn, m) => m::mapError(fn)::flatten(), 2);
 
 // -- List utils
 
