@@ -1,16 +1,16 @@
-const ProtocolSym = Symbol("protocol");
-const TypeKey = Symbol("____TypeKey");
-const TypeKeys = Symbol("____TypeKeys");
-const KindKey = Symbol("____KindKey");
-const CustomType = Symbol("____CustomType");
-const TypeConstructor = Symbol("____TypeConstructor");
-const UnionType = Symbol("____UnionType");
-const UnionCases = Symbol("____UnionCases");
-const UnionCase = Symbol("____UnionCase");
-const UnionValues = Symbol("____UnionValues");
-const AnyType = Symbol("____AnyType");
+const ProtocolSym = "____Protocol";
+const TypeKey = "____TypeKey";
+const TypeKeys = "____TypeKeys";
+const KindKey = "____KindKey";
+const CustomType = "____CustomType";
+const TypeConstructor = "____TypeConstructor";
+const UnionType = "____UnionType";
+const UnionCases = "____UnionCases";
+const UnionCase = "____UnionCase";
+const UnionValues = "____UnionValues";
+const AnyType = "____AnyType";
 
-export const showType = T => {
+export const showType = (T) => {
   if (T == null) return "Null";
 
   if (T === String || typeof T === "string") return "String";
@@ -34,7 +34,7 @@ export const showType = T => {
 
   if (T.constructor === Object)
     return `{ ${Object.keys(T)
-      .map(key => `${key}: ${showType(T[key])}`)
+      .map((key) => `${key}: ${showType(T[key])}`)
       .join(", ")} }`;
 
   if (typeof T === "string") return `"${T}"`;
@@ -47,7 +47,7 @@ export const showType = T => {
     .replace(/\s*/g, "");
 };
 
-const getType = implementor => {
+const getType = (implementor) => {
   if (implementor == null) return Nil;
 
   if (implementor[TypeConstructor]) {
@@ -57,14 +57,14 @@ const getType = implementor => {
   return implementor.constructor;
 };
 
-const groupArgs = args => {
+const groupArgs = (args) => {
   const keys = args.filter((x, i) => i % 2 === 0);
   const vals = args.filter((x, i) => i % 2 === 1);
 
   return keys.map((x, i) => [x, vals[i]]);
 };
 
-export const id = x => x;
+export const id = (x) => x;
 export const identity = id;
 
 // -- Core
@@ -83,7 +83,7 @@ export function OneOf(...types) {
 export const withMeta = (x, meta) => {
   x.meta = x.meta || {};
 
-  Object.keys(meta).forEach(key => {
+  Object.keys(meta).forEach((key) => {
     x.meta[key] = meta[key];
   });
 
@@ -109,22 +109,22 @@ export const withMeta = (x, meta) => {
  *   mod2(2)     //=> 0
  *   mod2(3)     //=> 1
  */
-export const curry = function(f, n) {
+export const curry = function (f, n) {
   let arity = n == null ? f.length : n;
   let name = f.name;
 
   if (arity < 2) return f;
 
-  var curriedFn = function(...args) {
+  var curriedFn = function (...args) {
     args = args.slice(0, arity);
-    let realArity = args.filter(function(x) {
+    let realArity = args.filter(function (x) {
       return x !== __;
     }).length;
     let self = this;
 
     if (realArity >= arity) return f.apply(self, args);
     else {
-      var g = function(...partialArgs) {
+      var g = function (...partialArgs) {
         let newArgs = [];
 
         for (var i = 0; i < args.length; i++)
@@ -203,12 +203,12 @@ export const is = curry((type, obj) => {
   }
 
   if (type.constructor === Object && obj.constructor === Object) {
-    return Object.keys(type).every(key => is(type[key], obj[key]));
+    return Object.keys(type).every((key) => is(type[key], obj[key]));
   }
 
   let constructor = obj.constructor;
 
-  return !obj[KindKey] && (constructor && constructor === type);
+  return !obj[KindKey] && constructor && constructor === type;
 }, 2);
 
 /*
@@ -219,7 +219,7 @@ export const is = curry((type, obj) => {
  * Example:
  *   map(comp(isOdd, inc), [1, 2, 3]) // => [false, true, false]
  */
-export const comp = (...chain) => x => foldr((f, acc) => f(acc), x, chain);
+export const comp = (...chain) => (x) => foldr((f, acc) => f(acc), x, chain);
 
 // -- Protocol
 
@@ -252,8 +252,8 @@ export const comp = (...chain) => x => foldr((f, acc) => f(acc), x, chain);
  *   get(0, Immutable.List.of(1,2,3)) //=> Maybe.Some(1)
  */
 export const Protocol = curry((name, spec) => {
-  const dispatch = function(funcName, argList) {
-    return curry(function(...args) {
+  const dispatch = function (funcName, argList) {
+    return curry(function (...args) {
       let self = args[args.length - 1];
 
       let method = (getType(self)[ProtocolSym] || {})[funcName];
@@ -273,11 +273,11 @@ export const Protocol = curry((name, spec) => {
     }, argList.length);
   };
 
-  Object.keys(spec).forEach(key => {
+  Object.keys(spec).forEach((key) => {
     let args = spec[key];
     spec[key] = withMeta(dispatch(key, args), {
       name: key,
-      args
+      args,
     });
   });
 
@@ -354,7 +354,7 @@ export const implementsProtocol = curry((protocol, obj) => {
 
   const protocols = type[ProtocolSym];
 
-  return Object.keys(protocol).every(key => {
+  return Object.keys(protocol).every((key) => {
     const fn = protocols[key];
     return fn && typeof fn === "function";
   });
@@ -375,7 +375,7 @@ export const implementsProtocol = curry((protocol, obj) => {
  *   multi::defmethod([4, 5], (x, y) => 'x: 4, y: 5, z: 6')
  *
  */
-export const defmulti = dispatch => {
+export const defmulti = (dispatch) => {
   const methods = [];
 
   const multimethod = curry((...args) => {
@@ -390,7 +390,7 @@ export const defmulti = dispatch => {
 
   multimethod.type = "MultiMethod";
   multimethod.displayName = "<multimethod>";
-  multimethod.dispatchFn = /*memoize*/ function(...args) {
+  multimethod.dispatchFn = /*memoize*/ function (...args) {
     let match;
     let i = 0;
     let len = methods.length;
@@ -514,10 +514,10 @@ export const Type = (name, spec) => {
       [TypeKeys]: specKeys,
       [KindKey]: CustomType,
       [TypeConstructor]: constructor,
-      ...data
+      ...data,
     };
-    type.toString = function() {
-      return `${name}(${specKeys.map(key => type[key]::show()).join(", ")})`;
+    type.toString = function () {
+      return `${name}(${specKeys.map((key) => type[key]::show()).join(", ")})`;
     };
     return type;
   }, specKeys.length);
@@ -530,34 +530,34 @@ export const Type = (name, spec) => {
 
     IShow,
     {
-      show: type => type.toString()
+      show: (type) => type.toString(),
     },
 
     IClone,
     {
-      clone: type => type,
-      shallowClone: type => type
+      clone: (type) => type,
+      shallowClone: (type) => type,
     },
 
     ICount,
     {
-      count: type => type[TypeKeys].length
+      count: (type) => type[TypeKeys].length,
     },
 
     ILookup,
     {
-      get: (key, type) => maybe(type[key])
+      get: (key, type) => maybe(type[key]),
     },
 
     ISeq,
     {
-      first: type => get(0, type),
-      rest: type => rest(type[TypeKeys])
+      first: (type) => get(0, type),
+      rest: (type) => rest(type[TypeKeys]),
     },
 
     IKeyed,
     {
-      keys: type => type[TypeKeys]
+      keys: (type) => type[TypeKeys],
     }
   );
 
@@ -587,10 +587,10 @@ export const Union = (name, spec) => {
 
     IShow,
     {
-      show: self =>
+      show: (self) =>
         `${name}.${self[UnionCase]}(${self[UnionValues]::map(show)::join(
           ", "
-        )})`
+        )})`,
     }
   );
 
@@ -615,7 +615,7 @@ export const Union = (name, spec) => {
         [KindKey]: UnionType,
         [UnionCases]: specKeys,
         [UnionValues]: vals,
-        [TypeConstructor]: _Union
+        [TypeConstructor]: _Union,
       };
     }, spec[key].length);
 
@@ -641,7 +641,7 @@ export const caseOf = curry((spec, type) => {
 
   if (
     !wildCard &&
-    !type[UnionCases].every(key => specKeys.some(_case => key === _case))
+    !type[UnionCases].every((key) => specKeys.some((_case) => key === _case))
   ) {
     throw new TypeError(`Non-exhaustive pattern matching detected, expected: ${show(
       type[UnionCases]
@@ -656,120 +656,120 @@ export const caseOf = curry((spec, type) => {
 // -- Core Protocols
 
 export const IShow = Protocol({
-  show: ["x"]
+  show: ["x"],
 });
 
 export const { show } = IShow;
 
 export const IClone = Protocol({
   clone: ["x"],
-  shallowClone: ["x"]
+  shallowClone: ["x"],
 });
 
 export const { clone, shallowClone } = IClone;
 
 export const ICount = Protocol({
-  count: ["xs"]
+  count: ["xs"],
 });
 
 export const { count } = ICount;
 
 export const IHash = Protocol({
-  hash: ["x"]
+  hash: ["x"],
 });
 
 export const { hash } = IHash;
 
 export const ISeq = Protocol({
   first: ["xs"],
-  rest: ["xs"]
+  rest: ["xs"],
 });
 
 export const { first, rest } = ISeq;
 
 export const ICollection = Protocol({
   conj: ["x", "xs"],
-  filterKV: ["f", "xs"]
+  filterKV: ["f", "xs"],
 });
 
 export const { conj, filterKV } = ICollection;
 
 export const IIterator = Protocol({
-  iterator: ["x"]
+  iterator: ["x"],
 });
 
 export const { iterator } = IIterator;
 
 export const IKeyed = Protocol({
-  keys: ["xs"]
+  keys: ["xs"],
 });
 
 export const { keys } = IKeyed;
 
 export const IAssociative = Protocol({
   assoc: ["key", "val", "xs"],
-  dissoc: ["key", "xs"]
+  dissoc: ["key", "xs"],
 });
 
 export const { assoc, dissoc } = IAssociative;
 
 export const ISet = Protocol({
-  disj: ["x", "xs"]
+  disj: ["x", "xs"],
 });
 
 export const { disj } = ISet;
 
 export const ILookup = Protocol({
-  get: ["key", "xs"]
+  get: ["key", "xs"],
 });
 
 export const { get } = ILookup;
 
 export const IMonoid = Protocol({
   empty: ["xs"],
-  append: ["x", "xs"]
+  append: ["x", "xs"],
 });
 
 export const { empty, append } = IMonoid;
 
 export const IFold = Protocol({
   foldl: ["f", "initial", "xs"],
-  foldr: ["f", "initial", "xs"]
+  foldr: ["f", "initial", "xs"],
 });
 
 export const { foldl, foldr } = IFold;
 
 export const IFunctor = Protocol({
-  map: ["f", "coll"]
+  map: ["f", "coll"],
 });
 
 export const { map } = IFunctor;
 
 export const ICata = Protocol({
-  cata: ["f", "g", "m"]
+  cata: ["f", "g", "m"],
 });
 
 export const { cata } = ICata;
 
 export const IBifunctor = Protocol({
-  bimap: ["f", "g", "m"]
+  bimap: ["f", "g", "m"],
 });
 
 export const { bimap } = IBifunctor;
 
 export const IFlatMapError = Protocol({
-  flatMapError: ["f", "m"]
+  flatMapError: ["f", "m"],
 });
 
 export const IApply = Protocol({
-  ap: ["ma", "mb"]
+  ap: ["ma", "mb"],
 });
 
 export const { ap } = IApply;
 
 export const IMonadic = Protocol({
   of: ["x", "m"],
-  flatten: ["m"]
+  flatten: ["m"],
 });
 
 export const { of, flatten } = IMonadic;
@@ -784,17 +784,17 @@ export const Product = Type({ val: Number });
 
 export const Maybe = Union({
   Some: [Any],
-  None: []
+  None: [],
 });
 
 Maybe.get = curry((fallback, m) => cata(id, () => fallback, m), 2);
 
-export const maybe = x =>
+export const maybe = (x) =>
   is(Maybe, x) ? x : x == null ? Maybe.None() : Maybe.Some(x);
 
 export const Result = Union({
   Ok: [Any],
-  Err: [Any]
+  Err: [Any],
 });
 
 export const result = (ok, err) =>
@@ -826,7 +826,7 @@ export const Task = Type({ fork: Function });
 export const fork = curry(
   (fail, succeed, task) =>
     task.fork(
-      err => {
+      (err) => {
         if (fail::is(Array)) {
           const [f, ...args] = fail;
           return f(...args);
@@ -834,7 +834,7 @@ export const fork = curry(
           return fail(err);
         }
       },
-      val => {
+      (val) => {
         if (succeed::is(Array)) {
           const [f, ...args] = succeed;
           return f(...args);
@@ -846,9 +846,9 @@ export const fork = curry(
   3
 );
 
-Task.fail = x => Task((fail, succeed) => fail(x));
-Task.succeed = x => Task((fail, succeed) => succeed(x));
-Task.of = x => Task((fail, succeed) => succeed(x));
+Task.fail = (x) => Task((fail, succeed) => fail(x));
+Task.succeed = (x) => Task((fail, succeed) => succeed(x));
+Task.of = (x) => Task((fail, succeed) => succeed(x));
 
 /* Task.none
  *
@@ -865,8 +865,8 @@ Task.perform = curry(
   (task, error, success) =>
     Task((_, succeed) =>
       task.fork(
-        err => succeed(err != null ? error(err) : error()),
-        val => succeed(val != null ? success(val) : success())
+        (err) => succeed(err != null ? error(err) : error()),
+        (val) => succeed(val != null ? success(val) : success())
       )
     ),
   3
@@ -881,28 +881,26 @@ Task.try = curry(
   (task, success) =>
     Task((_, succeed) =>
       task.fork(
-        err => {},
-        val => succeed(val != null ? success(val) : success())
+        (err) => {},
+        (val) => succeed(val != null ? success(val) : success())
       )
     ),
   2
 );
 
-Task.fromMaybe = maybe =>
+Task.fromMaybe = (maybe) =>
   maybe::caseOf({ Some: Task.succeed, None: Task.fail });
 
-Task.fromResult = result =>
+Task.fromResult = (result) =>
   result::caseOf({ Ok: Task.succeed, Err: Task.fail });
 
-Task.fromPromise = p => Task((fail, succeed) => p.then(succeed).catch(fail));
+Task.fromPromise = (p) => Task((fail, succeed) => p.then(succeed).catch(fail));
 
-Task.toPromise = t => new Promise((succeed, fail) => t.fork(fail, succeed));
+Task.toPromise = (t) => new Promise((succeed, fail) => t.fork(fail, succeed));
 
-Task.parallel = tasks =>
+Task.parallel = (tasks) =>
   Task((fail, succeed) =>
-    Promise.all(IFunctor.map(tasks, Task.toPromise))
-      .then(succeed)
-      .catch(fail)
+    Promise.all(IFunctor.map(tasks, Task.toPromise)).then(succeed).catch(fail)
   );
 
 // -- Core extenstions
@@ -912,13 +910,13 @@ extendType(
 
   IShow,
   {
-    show: str => str.toString()
+    show: (str) => str.toString(),
   },
 
   IClone,
   {
     clone: id,
-    shallowClone: id
+    shallowClone: id,
   }
 );
 
@@ -927,13 +925,13 @@ extendType(
 
   IShow,
   {
-    show: bool => bool.toString()
+    show: (bool) => bool.toString(),
   },
 
   IClone,
   {
     clone: id,
-    shallowClone: id
+    shallowClone: id,
   }
 );
 
@@ -942,12 +940,12 @@ extendType(
 
   IShow,
   {
-    show: regex => regex.toString()
+    show: (regex) => regex.toString(),
   },
 
   IClone,
   {
-    clone: regex => {
+    clone: (regex) => {
       return new RegExp(
         regex.source,
         regex.global
@@ -959,12 +957,12 @@ extendType(
           : ""
       );
     },
-    shallowClone: clone
+    shallowClone: clone,
   },
 
   IMonoid,
   {
-    empty: self => new RegExp(),
+    empty: (self) => new RegExp(),
 
     append: (r2, r1) =>
       new RegExp(
@@ -977,7 +975,7 @@ extendType(
           : "" + r2.multiline
           ? "m"
           : ""
-      )
+      ),
   }
 );
 
@@ -986,13 +984,13 @@ extendType(
 
   IShow,
   {
-    show: date => date.toString()
+    show: (date) => date.toString(),
   },
 
   IClone,
   {
-    clone: date => new Date(date),
-    shallowClone: clone
+    clone: (date) => new Date(date),
+    shallowClone: clone,
   }
 );
 
@@ -1001,13 +999,13 @@ extendType(
 
   IShow,
   {
-    show: _ => "Nil"
+    show: (_) => "Nil",
   },
 
   IClone,
   {
     clone: id,
-    shallowClone: clone
+    shallowClone: clone,
   }
 );
 
@@ -1016,53 +1014,53 @@ extendType(
 
   IShow,
   {
-    show: xs => `[ ${xs::map(show).join(", ")} ]`
+    show: (xs) => `[ ${xs::map(show).join(", ")} ]`,
   },
 
   IClone,
   {
-    clone: xs => xs::shallowClone()::map(clone),
+    clone: (xs) => xs::shallowClone()::map(clone),
 
-    shallowClone: xs => xs.slice()
+    shallowClone: (xs) => xs.slice(),
   },
 
   ICount,
   {
-    count: xs => xs.length
+    count: (xs) => xs.length,
   },
 
   ILookup,
   {
-    get: (key, xs) => maybe(xs[key])
+    get: (key, xs) => maybe(xs[key]),
   },
 
   ISeq,
   {
-    first: xs => xs::get(0),
-    rest: xs => xs.slice(1)
+    first: (xs) => xs::get(0),
+    rest: (xs) => xs.slice(1),
   },
 
   ICollection,
   {
     conj: (x, xs) => xs.concat(x),
-    filterKV: (f, xs) => xs.filter((v, k) => f(k, v))
+    filterKV: (f, xs) => xs.filter((v, k) => f(k, v)),
   },
 
   IIterator,
   {
-    iterator: xs => xs[Symbol.iterator]()
+    iterator: (xs) => xs[Symbol.iterator](),
   },
 
   IFold,
   {
     foldl: (f, initial, xs) => xs.reduce((acc, v) => f(v, acc), initial),
 
-    foldr: (f, initial, xs) => xs.reduceRight((acc, v) => f(v, acc), initial)
+    foldr: (f, initial, xs) => xs.reduceRight((acc, v) => f(v, acc), initial),
   },
 
   IKeyed,
   {
-    keys: xs => xs.map((_, i) => i)
+    keys: (xs) => xs.map((_, i) => i),
   },
 
   IAssociative,
@@ -1070,29 +1068,29 @@ extendType(
     assoc: (key, val, xs) =>
       xs::foldlKV((k, v, acc) => append([key === k ? val : v], acc), []),
 
-    dissoc: (key, xs) => xs::removeKV((k, v) => k === key)
+    dissoc: (key, xs) => xs::removeKV((k, v) => k === key),
   },
 
   IMonoid,
   {
-    empty: _ => [],
-    append: (x, xs) => xs.concat(x)
+    empty: (_) => [],
+    append: (x, xs) => xs.concat(x),
   },
 
   IFunctor,
   {
-    map: (f, xs) => xs.map(x => f(x))
+    map: (f, xs) => xs.map((x) => f(x)),
   },
 
   IMonadic,
   {
     of: (x, xs) => [x],
-    flatten: xs => xs::foldl(append, empty(xs))
+    flatten: (xs) => xs::foldl(append, empty(xs)),
   },
 
   IApply,
   {
-    ap: (ma, mb) => mb::flatMap(f => ma::map(f))
+    ap: (ma, mb) => mb::flatMap((f) => ma::map(f)),
   }
 );
 
@@ -1101,29 +1099,29 @@ extendType(
 
   IShow,
   {
-    show: str => `"${str}"`
+    show: (str) => `"${str}"`,
   },
 
   IClone,
   {
-    clone: str => str,
-    shallowClone: clone
+    clone: (str) => str,
+    shallowClone: clone,
   },
 
   ICount,
   {
-    count: str => str.length
+    count: (str) => str.length,
   },
 
   ILookup,
   {
-    get: (index, str) => maybe(str[index])
+    get: (index, str) => maybe(str[index]),
   },
 
   ISeq,
   {
-    first: str => str::get(0),
-    rest: str => str.slice(1)
+    first: (str) => str::get(0),
+    rest: (str) => str.slice(1),
   },
 
   ICollection,
@@ -1133,17 +1131,17 @@ extendType(
       xs
         .split("")
         .filter((v, k) => f(k, v))
-        .join("")
+        .join(""),
   },
 
   IIterator,
   {
-    iterator: str => str[Symbol.iterator]()
+    iterator: (str) => str[Symbol.iterator](),
   },
 
   IKeyed,
   {
-    keys: str => {
+    keys: (str) => {
       let i = 0;
       let keys = [];
 
@@ -1152,54 +1150,42 @@ extendType(
       }
 
       return keys;
-    }
+    },
   },
 
   IAssociative,
   {
-    assoc: (k, v, str) =>
-      str
-        ::split("")
-        ::assoc(k, v)
-        ::join(""),
+    assoc: (k, v, str) => str::split("")::assoc(k, v)::join(""),
 
-    dissoc: (k, self) =>
-      self
-        ::split("")
-        ::dissoc(k)
-        ::join("")
+    dissoc: (k, self) => self::split("")::dissoc(k)::join(""),
   },
 
   IMonoid,
   {
-    empty: _ => "",
-    append: (x, str) => str + x
+    empty: (_) => "",
+    append: (x, str) => str + x,
   },
 
   IFold,
   {
     foldl: (f, initial, str) => str::split("")::foldl(f, initial),
-    foldr: (f, initial, str) => str::split("")::foldr(f, initial)
+    foldr: (f, initial, str) => str::split("")::foldr(f, initial),
   },
 
   IFunctor,
   {
-    map: (f, str) =>
-      str
-        ::split("")
-        ::map(f)
-        ::join("")
+    map: (f, str) => str::split("")::map(f)::join(""),
   },
 
   IMonadic,
   {
     of: (x, str) => `${x}`,
-    flatten: str => str
+    flatten: (str) => str,
   },
 
   IApply,
   {
-    ap: (ma, mb) => mb::flatMap(f => ma::map(f))
+    ap: (ma, mb) => mb::flatMap((f) => ma::map(f)),
   }
 );
 
@@ -1208,16 +1194,16 @@ extendType(
 
   IShow,
   {
-    show: obj =>
+    show: (obj) =>
       `{ ${obj
         ::foldlKV((k, v, acc) => conj(`${k}: ${show(v)}`, acc), [])
-        ::join(", ")} }`
+        ::join(", ")} }`,
   },
 
   IClone,
   {
     clone: map(clone),
-    shallowClone: obj => foldlKV((k, v, obj) => ((obj[k] = v), obj), {}, obj)
+    shallowClone: (obj) => foldlKV((k, v, obj) => ((obj[k] = v), obj), {}, obj),
   },
 
   IFold,
@@ -1226,17 +1212,17 @@ extendType(
       Object.keys(obj).reduce((acc, key) => f(obj[key], acc), init),
 
     foldr: (f, init, obj) =>
-      Object.keys(obj).reduceRight((acc, key) => f(obj[key], acc), init)
+      Object.keys(obj).reduceRight((acc, key) => f(obj[key], acc), init),
   },
 
   ICount,
   {
-    count: comp(count, Object.keys)
+    count: comp(count, Object.keys),
   },
 
   IKeyed,
   {
-    keys: Object.keys
+    keys: Object.keys,
   },
 
   IAssociative,
@@ -1251,20 +1237,20 @@ extendType(
       const copy = shallowClone(obj);
       delete copy[k];
       return copy;
-    }
+    },
   },
 
   ISeq,
   {
-    first: obj =>
+    first: (obj) =>
       Object.keys(obj)
         ::get(0)
-        ::map(k => obj[k]),
+        ::map((k) => obj[k]),
 
-    rest: obj => {
+    rest: (obj) => {
       const key = Object.keys(obj)::get(0);
       return key::caseOf({ Some: dissoc(__, obj), None: () => ({}) });
-    }
+    },
   },
 
   ICollection,
@@ -1276,23 +1262,23 @@ extendType(
       Object.keys(obj)::foldl(
         (k, acc) => (f(k, obj[k]) ? acc::assoc(k, obj[k]) : acc),
         {}
-      )
+      ),
   },
 
   ILookup,
   {
-    get: (key, obj) => maybe(obj[key])
+    get: (key, obj) => maybe(obj[key]),
   },
 
   IMonoid,
   {
-    empty: _ => ({}),
-    append: conj
+    empty: (_) => ({}),
+    append: conj,
   },
 
   IFunctor,
   {
-    map: (f, obj) => foldlKV((k, v, acc) => assoc(k, f(v), acc), {}, obj)
+    map: (f, obj) => foldlKV((k, v, acc) => assoc(k, f(v), acc), {}, obj),
   }
 );
 
@@ -1302,56 +1288,56 @@ extendType(
   IClone,
   {
     clone: map(clone),
-    shallowClone: map(shallowClone)
+    shallowClone: map(shallowClone),
   },
 
   IMonoid,
   {
-    empty: _ => Maybe.None(),
+    empty: (_) => Maybe.None(),
     append: (ma, mb) =>
       mb::caseOf({
-        Some: x1 =>
+        Some: (x1) =>
           ma::caseOf({
-            Some: x2 => Maybe.Some(append(x2, x1)),
-            None: () => mb
+            Some: (x2) => Maybe.Some(append(x2, x1)),
+            None: () => mb,
           }),
-        None: () => ma
-      })
+        None: () => ma,
+      }),
   },
 
   IFold,
   {
     foldl: (f, initial, m) =>
       m::caseOf({
-        Some: x => f(initial, x),
-        None: () => initial
+        Some: (x) => f(initial, x),
+        None: () => initial,
       }),
 
     foldr: (f, initial, m) =>
       m::caseOf({
-        Some: x => f(x, initial),
-        None: () => initial
-      })
+        Some: (x) => f(x, initial),
+        None: () => initial,
+      }),
   },
 
   IFunctor,
   {
-    map: (f, m) => m::caseOf({ Some: comp(maybe, f), None: () => m })
+    map: (f, m) => m::caseOf({ Some: comp(maybe, f), None: () => m }),
   },
 
   ICata,
   {
-    cata: (f, g, m) => m::caseOf({ Some: f, None: g })
+    cata: (f, g, m) => m::caseOf({ Some: f, None: g }),
   },
 
   IMonadic,
   {
     of: (x, xs) => Maybe.Some(x),
-    flatten: ma =>
+    flatten: (ma) =>
       ma::caseOf({
-        Some: x => (is(Maybe, x) ? x : maybe(x)),
-        None: Maybe.None
-      })
+        Some: (x) => (is(Maybe, x) ? x : maybe(x)),
+        None: Maybe.None,
+      }),
   },
 
   IApply,
@@ -1359,8 +1345,8 @@ extendType(
     ap: (mb, ma) =>
       ma::caseOf({
         Some: map(__, mb),
-        None: Maybe.None
-      })
+        None: Maybe.None,
+      }),
   }
 );
 
@@ -1370,73 +1356,76 @@ extendType(
   IClone,
   {
     clone: map(clone),
-    shallowClone: map(shallowClone)
+    shallowClone: map(shallowClone),
   },
 
   IMonoid,
   {
-    empty: x =>
+    empty: (x) =>
       x::caseOf({ Ok: comp(Result.Ok, empty), Err: comp(Result.Err, empty) }),
 
     append: (ma, mb) =>
       mb::caseOf({
-        Ok: x1 =>
+        Ok: (x1) =>
           ma::caseOf({
-            Ok: x2 => Result.Ok(append(x2, x1)),
-            Err: Result.Err
+            Ok: (x2) => Result.Ok(append(x2, x1)),
+            Err: Result.Err,
           }),
-        Err: x1 =>
+        Err: (x1) =>
           ma::caseOf({
             Ok: () => mb,
-            Err: x2 => Result.Err(append(x2, x1))
-          })
-      })
+            Err: (x2) => Result.Err(append(x2, x1)),
+          }),
+      }),
   },
 
   IFold,
   {
     foldl: (f, initial, m) =>
       m::caseOf({
-        Ok: x => f(initial, x),
-        Err: () => initial
+        Ok: (x) => f(initial, x),
+        Err: () => initial,
       }),
 
     foldr: (f, initial, m) =>
       m::caseOf({
-        Ok: x => f(x, initial),
-        Err: () => initial
-      })
+        Ok: (x) => f(x, initial),
+        Err: () => initial,
+      }),
   },
 
   IFunctor,
   {
-    map: (f, fa) => fa::caseOf({ Ok: comp(Result.Ok, f), Err: Result.Err })
+    map: (f, fa) => fa::caseOf({ Ok: comp(Result.Ok, f), Err: Result.Err }),
   },
 
   ICata,
   {
-    cata: (f, g, fa) => fa::caseOf({ Ok: f, Err: g })
+    cata: (f, g, fa) => fa::caseOf({ Ok: f, Err: g }),
   },
 
   IBifunctor,
   {
     bimap: (f, g, fa) =>
-      fa::caseOf({ Ok: x => Result.Ok(g(x)), Err: err => Result.Err(f(err)) })
+      fa::caseOf({
+        Ok: (x) => Result.Ok(g(x)),
+        Err: (err) => Result.Err(f(err)),
+      }),
   },
 
   IFlatMapError,
   {
-    flatMapError: (f, fa) => fa::caseOf({ Ok: Result.Ok, Err: f })
+    flatMapError: (f, fa) => fa::caseOf({ Ok: Result.Ok, Err: f }),
   },
 
   IMonadic,
   {
     of: (x, m) => Result.Ok(x),
-    flatten: ma =>
+    flatten: (ma) =>
       ma::caseOf({
-        Ok: x => (is(Result, x) ? x : Result.Ok(x)),
-        Err: Result.Err
-      })
+        Ok: (x) => (is(Result, x) ? x : Result.Ok(x)),
+        Err: Result.Err,
+      }),
   },
 
   IApply,
@@ -1444,8 +1433,8 @@ extendType(
     ap: (mb, ma) =>
       ma::caseOf({
         Ok: map(__, mb),
-        Err: Result.Err
-      })
+        Err: Result.Err,
+      }),
   }
 );
 
@@ -1454,58 +1443,68 @@ extendType(
 
   IShow,
   {
-    show: t => "Task {}"
+    show: (t) => "Task {}",
   },
 
   IClone,
   {
     clone: map(clone),
-    shallowClone: map(shallowClone)
+    shallowClone: map(shallowClone),
   },
 
   IFold,
   {
     foldl: (f, initial, t) =>
       Task((fail, succeed) => {
-        t.fork(_ => succeed(initial), x => succeed(f(initial, x)));
+        t.fork(
+          (_) => succeed(initial),
+          (x) => succeed(f(initial, x))
+        );
       }),
 
     foldr: (f, initial, t) =>
       Task((fail, succeed) => {
-        t.fork(_ => succeed(initial), x => succeed(f(x, initial)));
-      })
+        t.fork(
+          (_) => succeed(initial),
+          (x) => succeed(f(x, initial))
+        );
+      }),
   },
 
   IFunctor,
   {
-    map: (f, t) => Task((fail, succeed) => t.fork(fail, val => succeed(f(val))))
+    map: (f, t) =>
+      Task((fail, succeed) => t.fork(fail, (val) => succeed(f(val)))),
   },
 
   IBifunctor,
   {
     bimap: (f, g, m) =>
       Task((fail, succeed) => {
-        m.fork(err => fail(f(err)), val => succeed(g(val)));
-      })
+        m.fork(
+          (err) => fail(f(err)),
+          (val) => succeed(g(val))
+        );
+      }),
   },
 
   IFlatMapError,
   {
     flatMapError: (f, fa) =>
       Task((fail, succeed) => {
-        fa.fork(err => f(err).fork(fail, succeed), succeed);
-      })
+        fa.fork((err) => f(err).fork(fail, succeed), succeed);
+      }),
   },
 
   IMonadic,
   {
     of: (x, t) => Task.of(x),
-    flatten: t => Task((fail, succeed) => t::fork(fail, fork(fail, succeed)))
+    flatten: (t) => Task((fail, succeed) => t::fork(fail, fork(fail, succeed))),
   },
 
   IApply,
   {
-    ap: (tb, ta) => ta::flatMap(map(__, tb))
+    ap: (tb, ta) => ta::flatMap(map(__, tb)),
   }
 );
 
@@ -1536,14 +1535,14 @@ extendType(
  *   square(2) // logs 'squaring 2' and returns 4
  *   square(2) // returns 4 without logging
  */
-export const memoize = fn => {
+export const memoize = (fn) => {
   let stringify = JSON.stringify,
     cache = {},
     source = fn.toString();
 
-  let cachedfun = function(...args) {
+  let cachedfun = function (...args) {
     let hash = stringify(
-      args.map(arg =>
+      args.map((arg) =>
         arg[KindKey] === UnionType ? stringify(arg[UnionValues]) : arg
       )
     );
@@ -1552,16 +1551,16 @@ export const memoize = fn => {
       : (cache[hash] = fn.apply(null, arguments));
   };
 
-  cachedfun.__cache = function() {
+  cachedfun.__cache = function () {
     cache.remove ||
-      (cache.remove = function() {
+      (cache.remove = function () {
         var hash = stringifyJson(arguments);
         return delete cache[hash];
       });
     return cache;
   }.call(this);
 
-  cachedfun.toString = function() {
+  cachedfun.toString = function () {
     return source;
   };
 
@@ -1599,11 +1598,7 @@ export const liftA2 = curry((fn, ap1, ap2) => ap1::map(fn)::ap(ap2), 3);
  * Like liftA2 but works with functions of three arguments
  */
 export const liftA3 = curry(
-  (fn, ap1, ap2, ap3) =>
-    ap1
-      ::map(fn)
-      ::ap(ap2)
-      ::ap(ap3),
+  (fn, ap1, ap2, ap3) => ap1::map(fn)::ap(ap2)::ap(ap3),
   4
 );
 
@@ -1613,12 +1608,7 @@ export const liftA3 = curry(
  * Like liftA2 but works with functions of four arguments
  */
 export const liftA4 = curry(
-  (fn, ap1, ap2, ap3, ap4) =>
-    ap1
-      ::map(fn)
-      ::ap(ap2)
-      ::ap(ap3)
-      ::ap(ap4),
+  (fn, ap1, ap2, ap3, ap4) => ap1::map(fn)::ap(ap2)::ap(ap3)::ap(ap4),
   5
 );
 
@@ -1629,12 +1619,7 @@ export const liftA4 = curry(
  */
 export const liftA5 = curry(
   (fn, ap1, ap2, ap3, ap4, ap5) =>
-    ap1
-      ::map(fn)
-      ::ap(ap2)
-      ::ap(ap3)
-      ::ap(ap4)
-      ::ap(ap5),
+    ap1::map(fn)::ap(ap2)::ap(ap3)::ap(ap4)::ap(ap5),
   6
 );
 
@@ -1645,13 +1630,7 @@ export const liftA5 = curry(
  */
 export const liftA6 = curry(
   (fn, ap1, ap2, ap3, ap4, ap5, ap6) =>
-    ap1
-      ::map(fn)
-      ::ap(ap2)
-      ::ap(ap3)
-      ::ap(ap4)
-      ::ap(ap5)
-      ::ap(ap6),
+    ap1::map(fn)::ap(ap2)::ap(ap3)::ap(ap4)::ap(ap5)::ap(ap6),
   7
 );
 
@@ -1743,7 +1722,7 @@ export const getIn = curry(
       ? obj::get(key)
       : obj
           ::get(key)
-          ::caseOf({ Some: x => x::getIn(rest), None: () => obj::get(key) }),
+          ::caseOf({ Some: (x) => x::getIn(rest), None: () => obj::get(key) }),
   2
 );
 
@@ -1757,8 +1736,8 @@ export const assocIn = curry(
     rest::count() === 0
       ? obj::assoc(key, val)
       : obj::get(key)::caseOf({
-          Some: x => obj::assoc(key, x::assocIn(rest, val)),
-          None: () => obj::assoc(key, obj::empty()::assocIn(rest, val))
+          Some: (x) => obj::assoc(key, x::assocIn(rest, val)),
+          None: () => obj::assoc(key, obj::empty()::assocIn(rest, val)),
         }),
   3
 );
@@ -1773,8 +1752,8 @@ export const dissocIn = curry(
     rest::count() === 0
       ? obj::dissoc(key)
       : obj::get(key)::caseOf({
-          Some: x => obj::assoc(key, x::dissocIn(rest)),
-          None: () => obj::assoc(key, obj::empty()::dissocIn(rest))
+          Some: (x) => obj::assoc(key, x::dissocIn(rest)),
+          None: () => obj::assoc(key, obj::empty()::dissocIn(rest)),
         }),
   2
 );
@@ -1824,9 +1803,11 @@ export const evolve = curry(
   2
 );
 
-export const vals = curry(xs => xs::foldl((val, acc) => acc::append(val), []));
+export const vals = curry((xs) =>
+  xs::foldl((val, acc) => acc::append(val), [])
+);
 
-export const kvp = curry(xs =>
+export const kvp = curry((xs) =>
   xs::foldlKV((key, val, acc) => acc::conj([[key, val]]), [])
 );
 
@@ -1907,11 +1888,11 @@ export const replace = curry(
  *
  * Returns the source string in all lowercase.
  */
-export const lowercase = str => str.toLowerCase();
+export const lowercase = (str) => str.toLowerCase();
 
 /*
  * uppercase(str)
  *
  * Returns the source string in all uppercase.
  */
-export const uppercase = str => str.toUpperCase();
+export const uppercase = (str) => str.toUpperCase();
