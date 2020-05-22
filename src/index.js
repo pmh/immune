@@ -23,6 +23,10 @@ export const showType = (T) => {
 
   if (T === Array) return `Array`;
 
+  if (T._tag === "TypedUnion") {
+    return `${T._name}(${T._types.map(showType).join(", ")})`;
+  }
+
   if (T[KindKey] === CustomType) return T[TypeKey];
 
   if (T[KindKey] === UnionType) {
@@ -573,7 +577,7 @@ export const Union = (name, spec) => {
     if (!(this instanceof _Union)) {
       return new _Union(...types);
     }
-
+    this._name = name;
     this._tag = "TypedUnion";
     this._types = types;
   }
