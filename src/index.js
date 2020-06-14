@@ -1838,6 +1838,27 @@ export const zip = (...xs) => {
 };
 
 /*
+ * intersperse(...xs)
+ *
+ * Inserts a value between each item in a collection
+ *
+ * Example:
+ *
+ *   intersperse(['x', 'y', 'z'], '/')  //=> ['x', '/', 'y', '/', 'z']]
+ */
+export const intersperse = (xs, sep) => {
+  return xs::foldl(
+    (item, acc) =>
+      acc::count() === xs::count() - 1
+        ? acc::conj(item)
+        : acc::count() === 0
+        ? acc::conj(item)
+        : acc::conj(sep)::conj(item),
+    empty(xs)
+  );
+};
+
+/*
  * Value equality check with semantics similar to Object.is,
  * but treats Immutable Iterables as values,
  * equal if the second Iterable includes equivalent values.

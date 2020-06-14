@@ -134,6 +134,7 @@ var utils = [
   "take",
   "into",
   "zip",
+  "intersperse",
   "equal",
   "shallowEqual",
   "deepEqual",
@@ -158,10 +159,10 @@ var utils = [
   "update",
 
   // -- Bimap utils
-  "mapError"
+  "mapError",
 ].reduce((acc, name) => Object.assign({}, acc, { [name]: true }), {});
 
-module.exports = function(babel) {
+module.exports = function (babel) {
   const { types: t } = babel;
 
   return {
@@ -184,16 +185,16 @@ module.exports = function(babel) {
           if (env.file.get("bind-imports").length)
             path.node.body = [
               t.importDeclaration(
-                env.file.get("bind-imports").map(name => {
+                env.file.get("bind-imports").map((name) => {
                   return t.importSpecifier(
                     t.identifier(name),
                     t.identifier(name)
                   );
                 }),
                 t.stringLiteral("immune")
-              )
+              ),
             ].concat(path.node.body);
-        }
+        },
       },
 
       Identifier(path, env) {
@@ -203,14 +204,14 @@ module.exports = function(babel) {
         if (
           !scope.hasBinding(node.name) &&
           utils[node.name] &&
-          !env.file.get("bind-imports").some(imp => imp === node.name)
+          !env.file.get("bind-imports").some((imp) => imp === node.name)
         ) {
           env.file.set(
             "bind-imports",
             env.file.get("bind-imports").concat(node.name)
           );
         }
-      }
-    }
+      },
+    },
   };
 };
