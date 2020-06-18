@@ -197,7 +197,7 @@ export const is = curry((type, obj) => {
     (obj[TypeKey] === type[TypeKey] || type[TypeKey] === undefined)
   )
     if (type._tag === "TypedUnion") {
-      return type._types.every((t, i) => is(t, obj[UnionValues][i]));
+      return obj[UnionValues].every((t, i) => is(type._types[i], t));
     } else {
       return true;
     }
