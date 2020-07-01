@@ -14,7 +14,7 @@
 
 require('@babel/plugin-syntax-function-bind')
 
-module.exports = function(babel) {
+module.exports = function (babel) {
   const { types: t } = babel
 
   return {
@@ -29,7 +29,7 @@ module.exports = function(babel) {
             t.callExpression(node.callee.callee, [
               ...(node.arguments || []),
               node.callee.object,
-            ]),
+            ])
           )
       },
     },

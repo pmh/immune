@@ -3,6 +3,7 @@
   "plugins": [
     "@babel/plugin-syntax-function-bind",
     "./babel/chain",
-    "./babel/auto-name"
+    "./babel/auto-name",
+    "./babel/pattern-match"
   ]
 }

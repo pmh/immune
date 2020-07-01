@@ -23,7 +23,7 @@
  * Would remain unchanged as names are already provided.
  */
 
-module.exports = function(babel) {
+module.exports = function (babel) {
   const { types: t } = babel
 
   const isType = node =>
@@ -38,6 +38,14 @@ module.exports = function(babel) {
     (node.init && node.init.callee && node.init.callee.name === 'Protocol') ||
     (node.value && node.value.callee && node.value.callee.name === 'Protocol')
 
+  const isFun = node =>
+    (node.init && node.init.callee && node.init.callee.name === 'Fun') ||
+    (node.value && node.value.callee && node.value.callee.name === 'Fun')
+
+  const isDispatch = node =>
+    (node.init && node.init.callee && node.init.callee.name === 'Dispatch') ||
+    (node.value && node.value.callee && node.value.callee.name === 'Dispatch')
+
   return {
     name: 'immune-auto-name',
     visitor: {
@@ -51,7 +59,9 @@ module.exports = function(babel) {
           (node.init.arguments.length === 0 ||
             isType(node) ||
             isUnion(node) ||
-            isProtocol(node))
+            isProtocol(node) ||
+            isFun(node) ||
+            isDispatch(node))
         ) {
           if (
             node.init.arguments[0] &&
@@ -64,16 +74,29 @@ module.exports = function(babel) {
       ObjectProperty(path, env) {
         const node = path.node
 
-        if (!isType(node) && !isUnion(node) && !isProtocol(node)) return
+        if (
+          !isType(node) &&
+          !isUnion(node) &&
+          !isProtocol(node) &&
+          !isFun(node) &&
+          !isDispatch(node)
+        )
+          return
 
-        if (isType(node) || isUnion(node) || isProtocol(node))
+        if (
+          isType(node) ||
+          isUnion(node) ||
+          isProtocol(node) ||
+          isFun(node) ||
+          isDispatch(node)
+        )
           if (
             path.node.value.arguments &&
             (path.node.value.arguments.length === 0 ||
               path.node.value.arguments[0].type !== 'StringLiteral')
           )
             path.node.value.arguments.unshift(
-              t.stringLiteral(path.node.key.name),
+              t.stringLiteral(path.node.key.name)
             )
       },
     },
