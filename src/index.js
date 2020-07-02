@@ -710,7 +710,7 @@ ${name}(${args.map(show).join(', ')})
   }
 )
 
-const docstr = f => {
+export const docstr = f => {
   const name = f.___meta___ ? f.___meta___.name || f.name : f.name
   const defaultDocs = { declaration: '', docstr: '' }
   let docs = f.___meta___ ? f.___meta___.docs || defaultDocs : defaultDocs
@@ -2149,6 +2149,14 @@ export const id = Fun(
 )
 
 const matchPattern = (value, matcher) => {
+  if (value::is(Union) && typeof matcher === 'string') {
+    return value[UnionCase] === matcher
+  }
+
+  if (matcher === '__') {
+    return true
+  }
+
   if (matcher::is(Array) && value::is(Array)) {
     const last = matcher[matcher.length - 1]
 
@@ -2183,9 +2191,6 @@ const matchPattern = (value, matcher) => {
     if (res === false) {
       return false
     }
-  }
-  if (matcher === __ || matcher === '_') {
-    return true
   }
 
   if (matcher === value) {
@@ -2225,7 +2230,7 @@ export const caseOf = Fun(
   (pattern, value) => {
     let returnValue
     for (const [matcher, fn] of pattern) {
-      if (matchPattern(value, matcher, fn)) {
+      if (matchPattern(value, matcher)) {
         returnValue = value::is(Union) ? fn(...value[UnionValues]) : fn(value)
         break
       }
