@@ -2149,12 +2149,12 @@ export const id = Fun(
 )
 
 const matchPattern = (value, matcher) => {
-  if (value::is(Union) && typeof matcher === 'string') {
-    return value[UnionCase] === matcher
+  if (matcher === __ || matcher === '_') {
+    return true
   }
 
-  if (matcher === '__') {
-    return true
+  if (value::is(Union) && typeof matcher === 'string') {
+    return value[UnionCase] === matcher
   }
 
   if (matcher::is(Array) && value::is(Array)) {
