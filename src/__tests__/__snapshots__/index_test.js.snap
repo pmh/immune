@@ -1,0 +1,88 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`caseOf Array throws a type error if __ is missing 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+[ 1, 2, 3 ]::caseOf({
+  [[  ]]: (...) => { ... }
+})
+
+  - Wildcard matcher is required when pattern matching on arrays
+  "
+`;
+
+exports[`caseOf Boolean throws a type error if __ is missing and pattern is incomplete 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+true::caseOf({
+  [true]: (...) => { ... }
+})
+
+  - There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher.
+  "
+`;
+
+exports[`caseOf Number throws a type error if __ is missing and no predicate matchers exists 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+1::caseOf({
+  [1]: (...) => { ... }
+})
+
+  - There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher.
+  "
+`;
+
+exports[`caseOf Number throws a type error if __ is missing and predicate matchers don't match 1`] = `"x.match is not a function"`;
+
+exports[`caseOf Object throws a type error if __ is missing 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+{ a: 1 }::caseOf({
+  [{  }]: (...) => { ... }
+})
+
+  - Wildcard matcher is required when pattern matching on objects
+  "
+`;
+
+exports[`caseOf String throws a type error if __ is missing and no predicate matchers exists 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+1::caseOf({
+  [\\"foo\\"]: (...) => { ... }
+})
+
+  - There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher.
+  "
+`;
+
+exports[`caseOf String throws a type error if __ is missing and predicate matchers don't match 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+\\"quux\\"::caseOf({
+  [\\"foo\\"]: (...) => { ... },
+  [<function>]: (...) => { ... }
+})
+
+  - There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher.
+  "
+`;
+
+exports[`caseOf Union throws if missing cases and no wild card is provided 1`] = `
+"
+Found a non-exhaustive pattern in the following expression:
+
+Maybe.Some(\\"abc\\")::caseOf({
+  [\\"Some\\"]: (...) => { ... }
+})
+
+  - Missing matcher for the following cases: None
+  "
+`;

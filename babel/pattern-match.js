@@ -32,9 +32,9 @@ module.exports = function (babel) {
             node.arguments[0] = t.arrayExpression(
               objExpr.properties.map(prop =>
                 t.arrayExpression([
-                  t.isIdentifier(prop.key)
-                    ? t.stringLiteral(prop.key.name)
-                    : prop.key,
+                  prop.computed || !!!prop.key.name || prop.key.name === '__'
+                    ? prop.key
+                    : t.stringLiteral(prop.key.name),
                   prop.value,
                 ])
               )

@@ -941,6 +941,47 @@ export const Union = (name, spec) => {
 
     acc[key] = _case
 
+    extendType(_Union, {
+      caseOf: Fun(
+        [Array, _Union, Any],
+
+        `Adds pattern matching capabilities to ${name}`,
+
+        (pattern, value) => {
+          let match, wildcard
+
+          for (const [matcher, fn] of pattern) {
+            if (matcher === value[UnionCase]) {
+              match = fn(...value[UnionValues])
+              break
+            }
+            if (matcher === __) {
+              match = fn(...value[UnionValues])
+            }
+          }
+
+          if (process.env.NODE_ENV !== 'production') {
+            const hasCases = value[UnionCases].every(_case =>
+              pattern.some(([matcher]) => matcher === _case || matcher === __)
+            )
+            if (!hasCases) {
+              patternError(
+                value,
+                pattern,
+                `Missing matcher for the following cases: ${value[
+                  UnionCases
+                ].filter(
+                  _case => !pattern.some(([matcher]) => matcher === _case)
+                ).join(', ')}`
+              )
+            }
+          }
+
+          return match
+        }
+      ),
+    })
+
     return acc
   }, _Union)
 }
@@ -966,10 +1007,10 @@ Maybe.get = Fun(
   returns the fallback otherwise.`,
 
   (fallback, maybe) =>
-    maybe::caseOf([
-      [Maybe.Some, x => x],
-      [Maybe.None, () => fallback],
-    ])
+    maybe::caseOf({
+      Some: x => x,
+      None: () => fallback,
+    })
 )
 
 export const maybe = Fun(
@@ -993,10 +1034,10 @@ Result.get = Fun(
   'Returns the value wrapped inside a result',
 
   result =>
-    result::caseOf([
-      [Result.Ok, x => x],
-      [Result.Err, x => x],
-    ])
+    result::caseOf({
+      Ok: x => x,
+      Err: x => x,
+    })
 )
 
 export const result = Fun(
@@ -1112,6 +1153,7 @@ Task.parallel = Fun(
 
 // -- Dispatch methods
 
+export const caseOf = Dispatch({ arity: 2 })
 export const clone = Dispatch({ arity: 1 })
 export const shallowClone = Dispatch({ arity: 1 })
 export const empty = Dispatch({ arity: 1 })
@@ -1134,6 +1176,30 @@ export const ap = Dispatch({ arity: 2 })
 export const keys = Dispatch({ arity: 1 })
 export const join = Dispatch({ arity: 2 })
 export const slice = Dispatch({ arity: 3 })
+
+const Pattern = T =>
+  Arr(
+    withMeta(
+      x =>
+        x::is(Array) &&
+        x::count() === 2 &&
+        x[0]::is(OneOf([Function, T, '_', '__', __])) &&
+        x[1]::is(Function)
+    ),
+    { name: 'Pattern' }
+  )
+
+const patternError = (value, pattern, hint = '') => {
+  throw new TypeError(`
+Found a non-exhaustive pattern in the following expression:
+
+${show(value)}::caseOf({
+  ${pattern
+    .map(([pattern, func]) => `[${show(pattern)}]: (...) => { ... }`)
+    .join(',\n  ')}
+})${hint ? `\n\n  - ${hint}` : ''}
+  `)
+}
 
 // -- Core Extensions
 
@@ -1195,6 +1261,56 @@ extendType(Number, {
   ),
 
   shallowClone: clone,
+
+  caseOf: Fun(
+    [Arr, Num, Any],
+
+    `Allows for pattern matching on numbers.
+
+    | Example:
+    |
+    | 2::caseOf({
+    |  1: num => 'number one',
+    |  [lt(4)]: num => 'less than four but not 1',
+    |  [__]: num => 'every other number'
+    | })
+    `,
+
+    (patterns, num) => {
+      let match
+
+      for (let [matcher, fn] of patterns) {
+        if (num === matcher) {
+          match = fn(num)
+          break
+        }
+
+        if (typeof matcher === 'function') {
+          if (matcher(num)) {
+            match = fn(num)
+            break
+          }
+        }
+
+        if (matcher === __) {
+          match = fn(num)
+          break
+        }
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        if (!patterns.some(([key]) => key === __)) {
+          patternError(
+            num,
+            patterns,
+            "There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher."
+          )
+        }
+      }
+
+      return match
+    }
+  ),
 })
 
 extendType(Boolean, {
@@ -1207,6 +1323,57 @@ extendType(Boolean, {
   ),
 
   shallowClone: clone,
+
+  caseOf: Fun(
+    [Arr, Boolean, Any],
+
+    `Allows for pattern matching on booleans.
+    Only matches against literal values true, false and __.
+
+    | Example:
+    |
+    | true::caseOf({
+    |  [true]: num => 'its true',
+    |  [false]: num => 'its false',
+    | })
+    `,
+
+    (patterns, bool) => {
+      let match
+
+      for (let [matcher, fn] of patterns) {
+        if (bool === matcher) {
+          match = fn(bool)
+          break
+        }
+
+        if (matcher === __) {
+          match = fn(bool)
+          break
+        }
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        if (!patterns.some(([key]) => key === __)) {
+          if (
+            patterns.length < 2 ||
+            !(
+              patterns.some(([key]) => key === true) &&
+              patterns.some(([key]) => key === false)
+            )
+          ) {
+            patternError(
+              bool,
+              patterns,
+              "There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher."
+            )
+          }
+        }
+      }
+
+      return match
+    }
+  ),
 })
 
 extendType(RegExp, {
@@ -1473,6 +1640,99 @@ extendType(Array, {
 
     (start, end, xs) => xs.slice(start, end)
   ),
+
+  caseOf: Fun(
+    [Arr, Arr, Any],
+
+    `Allows for pattern matching on arrays.
+
+    | Example:
+    |
+    | [1, 2, [3, 4]]::caseOf({
+    |   [[Number]]: xs => 'array with a single number!',
+    |   [x => x.length === 10]: xs => '10 elements!',
+    |   [[Number, Number, [Number, Number]]]: xs => 'Jackpot!'
+    |   [[String, Number, Spread(Number)]]: xs => '[Str, Num, ...Str]'
+    |   [__]: xs => 'every other array'
+    | }) // => 'Jackpot!'
+    `,
+
+    (patterns, xs) => {
+      let match
+
+      const matchPattern = (matcher, value) => {
+        if (Array.isArray(matcher) && Array.isArray(value)) {
+          const last = matcher[matcher.length - 1]
+
+          if (last && last.kind === 'Spread') {
+            matcher = matcher.slice(0, matcher.length - 1)
+            return (
+              matcher.every((item, i) => matchPattern(item, value[i])) &&
+              value.slice(matcher.length).every(v => v::is(last.type))
+            )
+          } else {
+            return (
+              matcher.length === value.length &&
+              value.every((item, i) => matchPattern(matcher[i], item))
+            )
+          }
+        }
+
+        if (matcher::is(Object) && value::is(Object)) {
+          return Object.keys(matcher).every(key => {
+            return matchPattern(value[key], matcher[key])
+          })
+        }
+
+        if (value::is(matcher)) {
+          return true
+        }
+
+        if (value === matcher) {
+          return true
+        }
+
+        if (
+          matcher instanceof RegExp &&
+          value::is(String) &&
+          string.match(matcher)
+        ) {
+          return true
+        }
+
+        if (typeof matcher === 'function') {
+          if (matcher(value)) {
+            return true
+          }
+        }
+
+        return false
+      }
+
+      for (let [matcher, fn] of patterns) {
+        if (matchPattern(matcher, xs)) {
+          match = fn(xs)
+          break
+        }
+        if (matcher === __) {
+          match = fn(xs)
+          break
+        }
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        if (!patterns.some(([matcher]) => matcher === __)) {
+          patternError(
+            xs,
+            patterns,
+            'Wildcard matcher is required when pattern matching on arrays'
+          )
+        }
+      }
+
+      return match
+    }
+  ),
 })
 
 extendType(String, {
@@ -1650,6 +1910,75 @@ extendType(String, {
     'Returns a new string with only the characters betweed start and end',
 
     (start, end, str) => str.slice(start, end)
+  ),
+
+  caseOf: Fun(
+    [Arr, Str, Any],
+
+    `Allows for pattern matching on numbers.
+
+    | Example:
+    |
+    | "quux"::caseOf({
+    |  "foo": str => 'foo!',
+    |  [x => x.match(/bar/)]: str => 'bar!',
+    |  [/quux/]: str => 'quux!'
+    |  [__]: str => 'every other string'
+    | }) // => 'quux!'
+    `,
+
+    (patterns, str) => {
+      let match
+
+      for (let [matcher, fn] of patterns) {
+        if (str === matcher) {
+          match = fn(str)
+          break
+        }
+
+        if (typeof matcher === 'function') {
+          if (matcher(str)) {
+            match = fn(str)
+            break
+          }
+        }
+
+        if (matcher instanceof RegExp) {
+          if (str.match(matcher)) {
+            match = fn(str)
+            break
+          }
+        }
+
+        if (matcher === __) {
+          match = fn(str)
+          break
+        }
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        if (
+          !patterns.some(([matcher]) => matcher === __) &&
+          !patterns.some(([matcher]) => typeof matcher === 'function')
+        ) {
+          patternError(
+            str,
+            patterns,
+            "There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher."
+          )
+        }
+      }
+
+      if (!match) {
+        patternError(
+          str,
+          patterns,
+          "There are multiple strings that won't be caught by this pattern, add a wildcard or predicate matcher."
+        )
+      }
+
+      return match
+    }
   ),
 })
 
@@ -1836,6 +2165,96 @@ extendType(Object, {
 
     Object.keys
   ),
+
+  caseOf: Fun(
+    [Arr, Obj, Any],
+
+    `Allows for pattern matching on objects.
+
+    | Example:
+    |
+    | { a: 123, b: 'foo' }::caseOf({
+    |   [{ a: Number, b: 'foo' }]: xs => '{ a: Number, b: 'foo' }',
+    |   [{ d: Array }]: xs => '{ d: Array }',
+    |   [__]: xs => 'every other object'
+    | }) // => '{ a: Number, b: 'foo' }'
+    `,
+
+    (patterns, obj) => {
+      let match
+
+      const matchPattern = (matcher, value) => {
+        if (typeof matcher === 'function') {
+          if (value !== undefined && matcher(value) === true) {
+            return true
+          }
+        }
+
+        if (value::is(matcher)) {
+          return true
+        }
+
+        if (value === matcher) {
+          return true
+        }
+
+        if (
+          matcher instanceof RegExp &&
+          value::is(String) &&
+          string.match(matcher)
+        ) {
+          return true
+        }
+
+        if (Array.isArray(matcher) && Array.isArray(value)) {
+          const last = matcher[matcher.length - 1]
+
+          if (last && last.kind === 'Spread') {
+            matcher = matcher.slice(0, matcher.length - 1)
+            return (
+              matcher.every((item, i) => matchPattern(item, value[i])) &&
+              value.slice(matcher.length).every(v => v::is(last.type))
+            )
+          } else {
+            return (
+              matcher.length === value.length &&
+              value.every((item, i) => matchPattern(matcher[i], item))
+            )
+          }
+        }
+        if (matcher::is(Object) && value::is(Object)) {
+          return Object.keys(matcher).every(key => {
+            return matchPattern(matcher[key], value[key])
+          })
+        }
+
+        return false
+      }
+
+      for (let [matcher, fn] of patterns) {
+        if (matchPattern(matcher, obj)) {
+          match = fn(obj)
+          break
+        }
+        if (matcher === __) {
+          match = fn(obj)
+          break
+        }
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        if (!patterns.some(([matcher]) => matcher === __)) {
+          patternError(
+            obj,
+            patterns,
+            'Wildcard matcher is required when pattern matching on objects'
+          )
+        }
+      }
+
+      return match
+    }
+  ),
 })
 
 extendType(Maybe, {
@@ -1870,12 +2289,12 @@ extendType(Maybe, {
 
     (mb, ma) =>
       ma::caseOf({
-        [Maybe.Some]: a =>
+        Some: a =>
           mb::caseOf({
-            [Maybe.Some]: b => Maybe.Some(a::append(b)),
-            [Maybe.None]: () => ma,
+            Some: b => Maybe.Some(a::append(b)),
+            None: () => ma,
           }),
-        [Maybe.None]: () => mb,
+        None: () => mb,
       })
   ),
 
@@ -1886,8 +2305,8 @@ extendType(Maybe, {
 
     (f, m) =>
       m::caseOf({
-        [Maybe.Some]: x => Maybe.Some(f(x)),
-        [Maybe.None]: () => Maybe.None(),
+        Some: x => Maybe.Some(f(x)),
+        None: () => Maybe.None(),
       })
   ),
 
@@ -1904,7 +2323,7 @@ extendType(Maybe, {
 
     'Flattens a nested maybe',
 
-    m => m::caseOf({ [Maybe.Some]: id, [Maybe.None]: () => Maybe.None() })
+    m => m::caseOf({ Some: id, None: () => Maybe.None() })
   ),
 
   ap: Fun(
@@ -1914,8 +2333,8 @@ extendType(Maybe, {
 
     (mb, ma) =>
       ma::caseOf({
-        [Maybe.Some]: map(__, mb),
-        [Maybe.None]: Maybe.None,
+        Some: map(__, mb),
+        None: Maybe.None,
       })
   ),
 
@@ -1926,8 +2345,8 @@ extendType(Maybe, {
 
     (f, acc, ma) =>
       ma::caseOf({
-        [Maybe.Some]: x => f(x, acc),
-        [Maybe.None]: () => acc,
+        Some: x => f(x, acc),
+        None: () => acc,
       })
   ),
 
@@ -1938,8 +2357,8 @@ extendType(Maybe, {
 
     (f, acc, ma) =>
       ma::caseOf({
-        [Maybe.Some]: x => f(x, acc),
-        [Maybe.None]: () => acc,
+        Some: x => f(x, acc),
+        None: () => acc,
       })
   ),
 })
@@ -1968,8 +2387,8 @@ extendType(Result, {
 
     res =>
       res::caseOf({
-        [Result.Ok]: val => Result.Ok(empty(val)),
-        [Result.Err]: err => Result.Err(empty(err)),
+        Ok: val => Result.Ok(empty(val)),
+        Err: err => Result.Err(empty(err)),
       })
   ),
 
@@ -1984,15 +2403,15 @@ extendType(Result, {
 
     (mb, ma) =>
       ma::caseOf({
-        [Result.Ok]: x =>
+        Ok: x =>
           mb::caseOf({
-            [Result.Ok]: xs => Result.Ok(x::append(xs)),
-            [Result.Err]: () => ma,
+            Ok: xs => Result.Ok(x::append(xs)),
+            Err: () => ma,
           }),
-        [Result.Err]: x =>
+        Err: x =>
           mb::caseOf({
-            [Result.Ok]: () => mb,
-            [Result.Err]: xs => Result.Err(x::append(xs)),
+            Ok: () => mb,
+            Err: xs => Result.Err(x::append(xs)),
           }),
       })
   ),
@@ -2004,8 +2423,8 @@ extendType(Result, {
 
     (f, m) =>
       m::caseOf({
-        [Result.Ok]: x => Result.Ok(f(x)),
-        [Result.Err]: Result.Err,
+        Ok: x => Result.Ok(f(x)),
+        Err: Result.Err,
       })
   ),
 
@@ -2016,8 +2435,8 @@ extendType(Result, {
 
     (err, ok, ma) =>
       ma::caseOf({
-        [Result.Ok]: x => Result.Ok(ok(x)),
-        [Result.Err]: x => Result.Err(err(x)),
+        Ok: x => Result.Ok(ok(x)),
+        Err: x => Result.Err(err(x)),
       })
   ),
 
@@ -2034,7 +2453,7 @@ extendType(Result, {
 
     'Flattens a nested result',
 
-    m => m::caseOf({ [Result.Ok]: id, [Result.Err]: err => Result.Err(err) })
+    m => m::caseOf({ Ok: id, Err: err => Result.Err(err) })
   ),
 
   ap: Fun(
@@ -2044,8 +2463,8 @@ extendType(Result, {
 
     (mb, ma) =>
       ma::caseOf({
-        [Result.Ok]: map(__, mb),
-        [Result.Err]: Result.Err,
+        Ok: map(__, mb),
+        Err: Result.Err,
       })
   ),
 
@@ -2056,8 +2475,8 @@ extendType(Result, {
 
     (f, acc, ma) =>
       ma::caseOf({
-        [Result.Ok]: x => f(x, acc),
-        [Result.Err]: _ => acc,
+        Ok: x => f(x, acc),
+        Err: _ => acc,
       })
   ),
 
@@ -2068,8 +2487,8 @@ extendType(Result, {
 
     (f, acc, ma) =>
       ma::caseOf({
-        [Result.Ok]: x => f(x, acc),
-        [Result.Err]: _ => acc,
+        Ok: x => f(x, acc),
+        Err: _ => acc,
       })
   ),
 })
@@ -2148,110 +2567,110 @@ export const id = Fun(
   x => x
 )
 
-const matchPattern = (value, matcher) => {
-  if (matcher === __ || matcher === '_') {
-    return true
-  }
+// const matchPattern = (value, matcher) => {
+//   if (matcher === __ || matcher === '_') {
+//     return true
+//   }
+//
+//   if (value::is(Union) && typeof matcher === 'string') {
+//     return value[UnionCase] === matcher
+//   }
+//
+//   if (matcher::is(Array) && value::is(Array)) {
+//     const last = matcher[matcher.length - 1]
+//
+//     if (last && last.kind === 'Spread') {
+//       matcher = matcher.slice(0, matcher.length - 1)
+//       return (
+//         matcher.every((item, i) => matchPattern(value[i], item)) &&
+//         value.slice(matcher.length).every(v => v::is(last.type))
+//       )
+//     } else {
+//       return (
+//         matcher.length === value.length &&
+//         value.every((item, i) => matchPattern(item, matcher[i]))
+//       )
+//     }
+//   }
+//
+//   if (matcher::is(Object) && value::is(Object)) {
+//     return Object.keys(matcher).every(key => {
+//       return matchPattern(value[key], matcher[key])
+//     })
+//   }
+//
+//   if (value::is(matcher)) {
+//     return true
+//   }
+//   if (matcher::is(Function) && !matcher[KindKey] && value !== undefined) {
+//     const res = matcher(value)
+//     if (res === true) {
+//       return true
+//     }
+//     if (res === false) {
+//       return false
+//     }
+//   }
+//
+//   if (matcher === value) {
+//     return true
+//   }
+//
+//   return false
+// }
 
-  if (value::is(Union) && typeof matcher === 'string') {
-    return value[UnionCase] === matcher
-  }
-
-  if (matcher::is(Array) && value::is(Array)) {
-    const last = matcher[matcher.length - 1]
-
-    if (last && last.kind === 'Spread') {
-      matcher = matcher.slice(0, matcher.length - 1)
-      return (
-        matcher.every((item, i) => matchPattern(value[i], item)) &&
-        value.slice(matcher.length).every(v => v::is(last.type))
-      )
-    } else {
-      return (
-        matcher.length === value.length &&
-        value.every((item, i) => matchPattern(item, matcher[i]))
-      )
-    }
-  }
-
-  if (matcher::is(Object) && value::is(Object)) {
-    return Object.keys(matcher).every(key => {
-      return matchPattern(value[key], matcher[key])
-    })
-  }
-
-  if (value::is(matcher)) {
-    return true
-  }
-  if (matcher::is(Function) && !matcher[KindKey] && value !== undefined) {
-    const res = matcher(value)
-    if (res === true) {
-      return true
-    }
-    if (res === false) {
-      return false
-    }
-  }
-
-  if (matcher === value) {
-    return true
-  }
-
-  return false
-}
-
-export const caseOf = Fun(
-  [Array, Any, Any],
-
-  `Provides a way to pattern match on arbitrary values.
-
-  | Example:
-  |
-  | const lt = Fun(
-  |   [Number, Number, Boolean],
-  |   "less than",
-  |   (a, b) => a > b
-  | )
-  |
-  | 2::caseOf({
-  |   1: num => 'one',
-  |   [lt(4)]: num => 'two or three',
-  |   _: num => 'other'
-  | }) //=> 'two or three'
-  |
-  | [1, [2, 3], { a: { b: 'foo' } }]::caseOf({
-  |   [[String, [2, 3], { a: { b: 'foo' }  }]]: arr =>
-  |     "Won't match since first element is a number",
-  |   [[Number, [2, 3], { a: { b: 'foo' } }]]: arr =>
-  |     "Will match",
-  | }) //=> "Will match"
-  `,
-
-  (pattern, value) => {
-    let returnValue
-    for (const [matcher, fn] of pattern) {
-      if (matchPattern(value, matcher)) {
-        returnValue = value::is(Union) ? fn(...value[UnionValues]) : fn(value)
-        break
-      }
-    }
-
-    if (returnValue === undefined) {
-      throw new TypeError(`
-
-Encountered non-exhaustive pattern in the following expression:
-
-${show(value)}::caseOf({
-  ${pattern
-    .map(([pattern, func]) => `[${show(pattern)}]: (...) => { ... }`)
-    .join(',\n  ')}
-})
-`)
-    }
-
-    return returnValue
-  }
-)
+// export const caseOf = Fun(
+//   [Array, Any, Any],
+//
+//   `Provides a way to pattern match on arbitrary values.
+//
+//   | Example:
+//   |
+//   | const lt = Fun(
+//   |   [Number, Number, Boolean],
+//   |   "less than",
+//   |   (a, b) => a > b
+//   | )
+//   |
+//   | 2::caseOf({
+//   |   1: num => 'one',
+//   |   [lt(4)]: num => 'two or three',
+//   |   _: num => 'other'
+//   | }) //=> 'two or three'
+//   |
+//   | [1, [2, 3], { a: { b: 'foo' } }]::caseOf({
+//   |   [[String, [2, 3], { a: { b: 'foo' }  }]]: arr =>
+//   |     "Won't match since first element is a number",
+//   |   [[Number, [2, 3], { a: { b: 'foo' } }]]: arr =>
+//   |     "Will match",
+//   | }) //=> "Will match"
+//   `,
+//
+//   (pattern, value) => {
+//     let returnValue
+//     for (const [matcher, fn] of pattern) {
+//       if (matchPattern(value, matcher)) {
+//         returnValue = value::is(Union) ? fn(...value[UnionValues]) : fn(value)
+//         break
+//       }
+//     }
+//
+//     if (returnValue === undefined) {
+//       throw new TypeError(`
+//
+// Encountered non-exhaustive pattern in the following expression:
+//
+// ${show(value)}::caseOf({
+//   ${pattern
+//     .map(([pattern, func]) => `[${show(pattern)}]: (...) => { ... }`)
+//     .join(',\n  ')}
+// })
+// `)
+//     }
+//
+//     return returnValue
+//   }
+// )
 
 export const implementsExtension = Fun(
   [[String], Any, Boolean],
@@ -2366,8 +2785,8 @@ export const sequenceA = Fun(
 
   xs =>
     xs::get(0)::caseOf({
-      [Maybe.Some]: x => foldr(liftA2(append), x::pure([]), xs),
-      [Maybe.None]: () => {
+      Some: x => foldr(liftA2(append), x::pure([]), xs),
+      None: () => {
         throw new TypeError(`Can't call sequenceA with an empty list`)
       },
     })
@@ -2462,7 +2881,7 @@ export const getOrElse = Fun(
   `,
 
   (key, fallback, xs) =>
-    xs::get(key)::caseOf({ [Maybe.Some]: id, [Maybe.None]: () => fallback })
+    xs::get(key)::caseOf({ Some: id, None: () => fallback })
 )
 
 export const getIn = Fun(
@@ -2483,8 +2902,8 @@ export const getIn = Fun(
     rest::count() === 0
       ? obj::get(key)
       : obj::get(key)::caseOf({
-          [Maybe.Some]: x => x::getIn(rest),
-          [Maybe.None]: () => obj::get(key),
+          Some: x => x::getIn(rest),
+          None: () => obj::get(key),
         })
 )
 
@@ -2494,9 +2913,7 @@ export const getInOrElse = Fun(
   `Like getIn but returns the actual value if it exists or fallback otherwise`,
 
   (path, fallback, coll) =>
-    coll
-      ::getIn(path)
-      ::caseOf({ [Maybe.Some]: id, [Maybe.None]: () => fallback })
+    coll::getIn(path)::caseOf({ Some: id, None: () => fallback })
 )
 
 export const assocIn = Fun(
@@ -2513,8 +2930,8 @@ export const assocIn = Fun(
     rest::count() === 0
       ? obj::assoc(key, val)
       : obj::get(key)::caseOf({
-          [Maybe.Some]: x => obj::assoc(key, x::assocIn(rest, val)),
-          [Maybe.None]: () => obj::assoc(key, obj::empty()::assocIn(rest, val)),
+          Some: x => obj::assoc(key, x::assocIn(rest, val)),
+          None: () => obj::assoc(key, obj::empty()::assocIn(rest, val)),
         })
 )
 
@@ -2531,8 +2948,8 @@ export const dissocIn = Fun(
     rest::count() === 0
       ? obj::dissoc(key)
       : obj::get(key)::caseOf({
-          [Maybe.Some]: x => obj::assoc(key, x::dissocIn(rest)),
-          [Maybe.None]: () => obj::assoc(key, obj::empty()::dissocIn(rest)),
+          Some: x => obj::assoc(key, x::dissocIn(rest)),
+          None: () => obj::assoc(key, obj::empty()::dissocIn(rest)),
         })
 )
 

@@ -830,8 +830,8 @@ describe('UnionType', () => {
     extendType(Optional, {
       map: Fun([Function, Optional, Optional], '...', (f, self) =>
         self::caseOf({
-          [Optional.Some]: x => Optional.Some(f(x)),
-          [Optional.None]: () => Optional.None(),
+          Some: x => Optional.Some(f(x)),
+          None: () => Optional.None(),
         })
       ),
     })
@@ -854,8 +854,8 @@ describe('UnionType', () => {
     extendType(Optional, {
       map: Fun([Function, Optional, Optional], '...', (f, self) =>
         self::caseOf({
-          [Optional.Some]: x => Optional.Some(f(x)),
-          [Optional.None]: () => Optional.None(),
+          Some: x => Optional.Some(f(x)),
+          None: () => Optional.None(),
         })
       ),
     })
@@ -1111,12 +1111,12 @@ describe('Maybe', () => {
       const cloned = clone(original)
 
       const origArr = original::caseOf({
-        [Maybe.Some]: x => x,
-        [Maybe.None]: () => [],
+        Some: x => x,
+        None: () => [],
       })
       const clonedArr = cloned::caseOf({
-        [Maybe.Some]: x => x,
-        [Maybe.None]: () => [],
+        Some: x => x,
+        None: () => [],
       })
 
       expect(clonedArr).not.toBe(origArr)
@@ -1130,12 +1130,12 @@ describe('Maybe', () => {
       const cloned = shallowClone(original)
 
       const origArr = original::caseOf({
-        [Maybe.Some]: x => x,
-        [Maybe.None]: () => [],
+        Some: x => x,
+        None: () => [],
       })
       const clonedArr = cloned::caseOf({
-        [Maybe.Some]: x => x,
-        [Maybe.None]: () => [],
+        Some: x => x,
+        None: () => [],
       })
 
       expect(clonedArr).not.toBe(origArr)
@@ -1259,15 +1259,15 @@ describe('Result', () => {
   it('can be pattern matched', () => {
     expect(
       Result.Ok(200)::caseOf({
-        [Result.Ok]: x => `Ok: ${x}`,
-        [Result.Err]: err => `Err: ${err}`,
+        Ok: x => `Ok: ${x}`,
+        Err: err => `Err: ${err}`,
       })
     ).toBe('Ok: 200')
 
     expect(
       Result.Err(500)::caseOf({
-        [Result.Ok]: x => `Ok: ${x}`,
-        [Result.Err]: err => `Err: ${err}`,
+        Ok: x => `Ok: ${x}`,
+        Err: err => `Err: ${err}`,
       })
     ).toBe('Err: 500')
   })
@@ -1307,12 +1307,12 @@ describe('Result', () => {
       const cloned = clone(original)
 
       const origArr = original::caseOf({
-        [Result.Ok]: x => x,
-        [Result.Err]: _ => [],
+        Ok: x => x,
+        Err: _ => [],
       })
       const clonedArr = cloned::caseOf({
-        [Result.Ok]: x => x,
-        [Result.Err]: _ => [],
+        Ok: x => x,
+        Err: _ => [],
       })
 
       expect(clonedArr).not.toBe(origArr)
@@ -1326,12 +1326,12 @@ describe('Result', () => {
       const cloned = shallowClone(original)
 
       const origArr = original::caseOf({
-        [Result.Ok]: x => x,
-        [Result.Err]: _ => [],
+        Ok: x => x,
+        Err: _ => [],
       })
       const clonedArr = cloned::caseOf({
-        [Result.Ok]: x => x,
-        [Result.Err]: _ => [],
+        Ok: x => x,
+        Err: _ => [],
       })
 
       expect(clonedArr).not.toBe(origArr)
@@ -1648,97 +1648,183 @@ describe('Task', () => {
 })
 
 describe('caseOf', () => {
-  it('can pattern match against numbers', () => {
-    const match = caseOf({
-      1: num => `number one: ${num}`,
-      [lt(4)]: num => `number two: ${num}`,
-      _: num => `any number: ${num}`,
+  describe('Number', () => {
+    it('can match against numbers and functions', () => {
+      const matchNum = caseOf({
+        1: num => `number one: ${num}`,
+        [lt(4)]: num => `less than four: ${num}`,
+        __: num => `any number: ${num}`,
+      })
+      expect(matchNum(1)).toBe('number one: 1')
+      expect(matchNum(2)).toBe('less than four: 2')
+      expect(matchNum(4)).toBe('any number: 4')
     })
-    expect(match(1)).toBe('number one: 1')
-    expect(match(2)).toBe('number two: 2')
-    expect(match(4)).toBe('any number: 4')
+
+    it('throws a type error if __ is missing and no predicate matchers exists', () => {
+      const matchNum = caseOf({
+        1: num => `number one: ${num}`,
+      })
+      expect(() => matchNum(1)).toThrowErrorMatchingSnapshot()
+    })
+
+    it("throws a type error if __ is missing and predicate matchers don't match", () => {
+      const matchNum = caseOf({
+        foo: str => `str foo: ${str}`,
+        [x => x.match(/bar/)]: str => `match bar: ${str}`,
+      })
+      expect(() => matchNum(3)).toThrowErrorMatchingSnapshot()
+    })
   })
 
-  it('can pattern match against strings', () => {
-    const match = caseOf({
-      'foo bar': str => `foo: ${str}`,
-      [str => !!str.match(/baz/)]: str => `baz: ${str}`,
-      _: str => `any string: ${str}`,
+  describe('String', () => {
+    it('can pattern match against strings, functions and regular expressions', () => {
+      const matchStr = caseOf({
+        'foo bar': str => `foo: ${str}`,
+        [str => !!str.match(/baz/)]: str => `baz: ${str}`,
+        [/quux/]: str => `quux: ${str}`,
+        __: str => `any string: ${str}`,
+      })
+      expect(matchStr('foo bar')).toBe('foo: foo bar')
+      expect(matchStr('baz quux')).toBe('baz: baz quux')
+      expect(matchStr('baz qoo')).toBe('baz: baz qoo')
+      expect(matchStr('quux qoo')).toBe('quux: quux qoo')
+      expect(matchStr('whatever')).toBe('any string: whatever')
     })
-    expect(match('foo bar')).toBe('foo: foo bar')
-    expect(match('baz quux')).toBe('baz: baz quux')
-    expect(match('baz qoo')).toBe('baz: baz qoo')
-    expect(match('whatever')).toBe('any string: whatever')
+
+    it('throws a type error if __ is missing and no predicate matchers exists', () => {
+      const matchStr = caseOf({
+        foo: str => `str foo: ${str}`,
+      })
+      expect(() => matchStr(1)).toThrowErrorMatchingSnapshot()
+    })
+
+    it("throws a type error if __ is missing and predicate matchers don't match", () => {
+      const matchStr = caseOf({
+        foo: str => `str foo: ${str}`,
+        [x => x.match(/bar/)]: str => `match bar: ${str}`,
+      })
+      expect(() => matchStr('quux')).toThrowErrorMatchingSnapshot()
+    })
   })
 
-  it('can pattern match against union types', () => {
-    const match = caseOf({
-      [Maybe.Some]: val => `Some(${val})`,
-      [Maybe.None]: () => `None()`,
+  describe('Boolean', () => {
+    it('can pattern match against expressions and regular expressions', () => {
+      const matchBool = caseOf({
+        [true]: bool => `bool true: ${bool}`,
+        [false]: bool => `bool false: ${bool}`,
+      })
+      expect(matchBool(true)).toBe('bool true: true')
+      expect(matchBool(false)).toBe('bool false: false')
     })
-    expect(match(Maybe.Some('abc'))).toBe('Some(abc)')
-    expect(match(Maybe.None())).toBe('None()')
+
+    it('throws a type error if __ is missing and pattern is incomplete', () => {
+      const matchBool = caseOf({
+        [true]: bool => `bool true: ${bool}`,
+      })
+      expect(() => matchBool(true)).toThrowErrorMatchingSnapshot()
+    })
   })
 
-  it('can pattern match against union types using string keys', () => {
-    const match = caseOf({
-      Some: val => `Some(${val})`,
-      None: () => `None()`,
+  describe('Union', () => {
+    it('can pattern match against union cases', () => {
+      const match = caseOf({
+        Some: val => `Some(${val})`,
+        None: () => `None()`,
+      })
+      expect(match(Maybe.Some('abc'))).toBe('Some(abc)')
+      expect(match(Maybe.None())).toBe('None()')
     })
-    expect(match(Maybe.Some('abc'))).toBe('Some(abc)')
-    expect(match(Maybe.None())).toBe('None()')
+
+    it('can pattern match against union cases using wildcard', () => {
+      const match = caseOf({
+        Some: val => `Some(${val})`,
+        __: () => `None()`,
+      })
+      expect(match(Maybe.Some('abc'))).toBe('Some(abc)')
+      expect(match(Maybe.None())).toBe('None()')
+    })
+
+    it('throws if missing cases and no wild card is provided', () => {
+      const match = caseOf({
+        Some: val => `Some(${val})`,
+      })
+      expect(() => match(Maybe.Some('abc'))).toThrowErrorMatchingSnapshot()
+    })
   })
 
-  it('can pattern match against arrays', () => {
-    const match = caseOf({
-      [[1, 2, 3]]: xs => `Array [1, 2, 3]: ${show(xs)}`,
-      [[1, [2, Number]]]: xs => `Array [1, [2, Number]]: ${show(xs)}`,
-      [['foo', String, 'baz']]: xs =>
-        `Array ["foo", String, "baz"]: ${show(xs)}`,
-      [[lt(4), Number]]: xs => `Array [Number, Number]: ${show(xs)}`,
-      [[String]]: xs => `Array [String]: ${show(xs)}`,
-      [[String, Spread(String)]]: xs =>
-        `Array [String, Spread(String)]: ${show(xs)}`,
+  describe('Array', () => {
+    it('can pattern match deeply against arrays', () => {
+      const match = caseOf({
+        [[1, 2, 3]]: xs => `Array [1, 2, 3]: ${show(xs)}`,
+        [[1, [2, Number]]]: xs => `Array [1, [2, Number]]: ${show(xs)}`,
+        [['foo', String, 'baz']]: xs =>
+          `Array ["foo", String, "baz"]: ${show(xs)}`,
+        [[lt(4), Number]]: xs => `Array [Number, Number]: ${show(xs)}`,
+        [[String]]: xs => `Array [String]: ${show(xs)}`,
+        [[String, Spread(String)]]: xs =>
+          `Array [String, Spread(String)]: ${show(xs)}`,
+        [__]: xs => `All other arrays: ${show(xs)}`,
+      })
+
+      expect(match([1, 2, 3])).toBe('Array [1, 2, 3]: [ 1, 2, 3 ]')
+      expect(match([1, [2, 3]])).toBe('Array [1, [2, Number]]: [ 1, [ 2, 3 ] ]')
+      expect(match(['foo', 'bar', 'baz'])).toBe(
+        'Array ["foo", String, "baz"]: [ "foo", "bar", "baz" ]'
+      )
+      expect(match([1, 2])).toBe('Array [Number, Number]: [ 1, 2 ]')
+      expect(match(['foo'])).toBe('Array [String]: [ "foo" ]')
+      expect(match(['foo', 'bar', 'baz', 'quux'])).toBe(
+        'Array [String, Spread(String)]: [ "foo", "bar", "baz", "quux" ]'
+      )
+      expect(match(['foo', 2, [3, 4]])).toBe(
+        'All other arrays: [ "foo", 2, [ 3, 4 ] ]'
+      )
     })
 
-    expect(match([1, 2, 3])).toBe('Array [1, 2, 3]: [ 1, 2, 3 ]')
-    expect(match([1, [2, 3]])).toBe('Array [1, [2, Number]]: [ 1, [ 2, 3 ] ]')
-    expect(match(['foo', 'bar', 'baz'])).toBe(
-      'Array ["foo", String, "baz"]: [ "foo", "bar", "baz" ]'
-    )
-    expect(match([1, 2])).toBe('Array [Number, Number]: [ 1, 2 ]')
-    expect(match(['foo'])).toBe('Array [String]: [ "foo" ]')
-    expect(match(['foo', 'bar', 'baz', 'quux'])).toBe(
-      'Array [String, Spread(String)]: [ "foo", "bar", "baz", "quux" ]'
-    )
+    it('throws a type error if __ is missing', () => {
+      const matchArr = caseOf({
+        [[]]: xs => `array: ${xs}`,
+      })
+      expect(() => matchArr([1, 2, 3])).toThrowErrorMatchingSnapshot()
+    })
   })
 
-  it('can pattern match against objects', () => {
-    const match = caseOf({
-      [{ a: Number, b: 'foo' }]: obj =>
-        `Object { a: Number, b: "foo" }: ${show(obj)}`,
-      [{ d: Array }]: obj => `Object { d: Array }: ${show(obj)}`,
-      [{ d: x => !!x.match('!') }]: obj =>
-        `Object { d: x => match("!") }: ${show(obj)}`,
-      [{ a: { b: 2, c: Number } }]: obj =>
-        `Object { a: { b: 2, c: Number } }: ${show(obj)}`,
+  describe('Object', () => {
+    it('can pattern match against objects', () => {
+      const match = caseOf({
+        [{ a: Number, b: 'foo' }]: obj =>
+          `Object { a: Number, b: "foo" }: ${show(obj)}`,
+        [{ d: Array }]: obj => `Object { d: Array }: ${show(obj)}`,
+        [{ d: x => !!x.match('!') }]: obj =>
+          `Object { d: x => match("!") }: ${show(obj)}`,
+        [{ a: { b: 2, c: Number } }]: obj =>
+          `Object { a: { b: 2, c: Number } }: ${show(obj)}`,
+        [__]: obj => `all other objects: ${show(obj)}`,
+      })
+
+      expect(match({ a: 123, b: 'foo' })).toBe(
+        'Object { a: Number, b: "foo" }: { a: 123, b: "foo" }'
+      )
+
+      expect(match({ d: ['foo!'] })).toBe(
+        'Object { d: Array }: { d: [ "foo!" ] }'
+      )
+
+      expect(match({ d: 'foo!' })).toBe(
+        'Object { d: x => match("!") }: { d: "foo!" }'
+      )
+
+      expect(match({ a: { b: 2, c: 1234 } })).toBe(
+        'Object { a: { b: 2, c: Number } }: { a: { b: 2, c: 1234 } }'
+      )
     })
 
-    expect(match({ a: 123, b: 'foo' })).toBe(
-      'Object { a: Number, b: "foo" }: { a: 123, b: "foo" }'
-    )
-
-    expect(match({ d: ['foo!'] })).toBe(
-      'Object { d: Array }: { d: [ "foo!" ] }'
-    )
-
-    expect(match({ d: 'foo!' })).toBe(
-      'Object { d: x => match("!") }: { d: "foo!" }'
-    )
-
-    expect(match({ a: { b: 2, c: 1234 } })).toBe(
-      'Object { a: { b: 2, c: Number } }: { a: { b: 2, c: 1234 } }'
-    )
+    it('throws a type error if __ is missing', () => {
+      const matchObj = caseOf({
+        [{}]: obj => `obj: ${obj}`,
+      })
+      expect(() => matchObj({ a: 1 })).toThrowErrorMatchingSnapshot()
+    })
   })
 })
 
@@ -1891,8 +1977,8 @@ describe('Array', () => {
     it('returns the value wrapped inside of a Maybe.Some if it exists', () => {
       expect(
         get(1, [1, 2, 3])::caseOf({
-          [Maybe.Some]: x => x,
-          [Maybe.None]: () => 0,
+          Some: x => x,
+          None: () => 0,
         })
       ).toBe(2)
     })
@@ -1900,8 +1986,8 @@ describe('Array', () => {
     it('returns Maybe.None if no value exists at the index', () => {
       expect(
         get(8, [1, 2, 3])::caseOf({
-          [Maybe.Some]: x => x,
-          [Maybe.None]: () => 'no match',
+          Some: x => x,
+          None: () => 'no match',
         })
       ).toBe('no match')
     })
@@ -2098,8 +2184,8 @@ describe('String', () => {
     it('returns the character wrapped inside of a Maybe.Some if it exists', () => {
       expect(
         get(1, 'bar')::caseOf({
-          [Maybe.Some]: x => x,
-          [Maybe.None]: () => '-',
+          Some: x => x,
+          None: () => '-',
         })
       ).toBe('a')
     })
@@ -2107,8 +2193,8 @@ describe('String', () => {
     it('returns Maybe.None if no value exists at the index', () => {
       expect(
         get(8, 'bar')::caseOf({
-          [Maybe.Some]: x => x,
-          [Maybe.None]: () => '-',
+          Some: x => x,
+          None: () => '-',
         })
       ).toBe('-')
     })
@@ -2264,8 +2350,8 @@ describe('Object', () => {
     it('returns the value associated with the key wrapped inside of a Maybe.Some if it exists', () => {
       expect(
         get('a', { a: 'A', b: 'B' })::caseOf({
-          [Maybe.Some]: x => x,
-          [Maybe.None]: () => '-',
+          Some: x => x,
+          None: () => '-',
         })
       ).toBe('A')
     })
@@ -2273,8 +2359,8 @@ describe('Object', () => {
     it('returns Maybe.None if no value exists at the index', () => {
       expect(
         get('c', { a: 'A', b: 'B' })::caseOf({
-          [Maybe.Some]: x => x,
-          [Maybe.None]: () => '-',
+          Some: x => x,
+          None: () => '-',
         })
       ).toBe('-')
     })
