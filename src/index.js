@@ -844,12 +844,14 @@ ${errors
 
         constructor,
 
-        keyTypes.length === 1 ? keyTypes[0] : OneOf(keyTypes),
+        Maybe(keyTypes.length === 1 ? keyTypes[0] : OneOf(keyTypes)),
       ],
 
-      `Returns the value associated with the key on ${showType(constructor)}`,
+      `Returns the value associated with the key on ${showType(
+        constructor
+      )} wrapped in a maybe`,
 
-      (key, type) => type[key]
+      (key, type) => maybe(type[key])
     ),
 
     assoc: Fun(
@@ -987,11 +989,6 @@ export const Union = (name, spec) => {
 }
 
 // -- Core Types
-
-const Num = Type({ predicate: Function })
-const Str = Type({ predicate: Function })
-const Arr = Type({ predicate: Function })
-const Obj = Type({ predicate: Function })
 
 export const Maybe = Union({
   Some: [Any],
@@ -1139,6 +1136,18 @@ Task.toPromise = Fun(
   t => new Promise((succeed, fail) => t.fork(fail, succeed))
 )
 
+Task.fromPromise = Fun(
+  'Task.fromPromise',
+  [Promise, Task],
+
+  'Converts a promise into a task',
+
+  p =>
+    Task((fail, succeed) => {
+      p.then(succeed).catch(fail)
+    })
+)
+
 Task.parallel = Fun(
   'Task.parallel',
   [[Task], Task],
@@ -1150,6 +1159,11 @@ Task.parallel = Fun(
       Promise.all(IFunctor.map(tasks, Task.toPromise)).then(succeed).catch(fail)
     )
 )
+
+const Num = Type({ predicate: Function })
+const Str = Type({ predicate: Function })
+const Arr = Type({ predicate: Function })
+const Obj = Type({ predicate: Function })
 
 // -- Dispatch methods
 
