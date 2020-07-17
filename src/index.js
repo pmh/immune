@@ -1160,10 +1160,10 @@ Task.parallel = Fun(
     )
 )
 
-const Num = Type({ predicate: Function })
-const Str = Type({ predicate: Function })
-const Arr = Type({ predicate: Function })
-const Obj = Type({ predicate: Function })
+export const Num = Type({ predicate: Function })
+export const Str = Type({ predicate: Function })
+export const Arr = Type({ predicate: Function })
+export const Obj = Type({ predicate: Function })
 
 // -- Dispatch methods
 
