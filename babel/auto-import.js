@@ -96,6 +96,7 @@ var utils = [
   'lowercase',
   'uppercase',
   'capitalize',
+  'contains',
 ].reduce((acc, name) => Object.assign({}, acc, { [name]: true }), {})
 
 /* auto-import.js

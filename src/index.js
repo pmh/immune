@@ -3150,3 +3150,11 @@ export const capitalize = Fun(
   str =>
     str::count() === 0 ? str : str[0]::uppercase() + str::rest()::lowercase()
 )
+
+export const contains = Fun(
+  [OneOf([String, RegExp]), String, Boolean],
+
+  'Returns true if the string contains the provided pattern',
+
+  (pattern, str) => !!str.match(pattern)
+)
