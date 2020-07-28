@@ -1156,7 +1156,7 @@ Task.parallel = Fun(
 
   tasks =>
     Task((fail, succeed) =>
-      Promise.all(IFunctor.map(tasks, Task.toPromise)).then(succeed).catch(fail)
+      Promise.all(map(Task.toPromise, tasks)).then(succeed).catch(fail)
     )
 )
 
